@@ -245,17 +245,19 @@ class PriceChartingCollector(BaseCollector):
         return []
 
     def _parse_timestamp_array(self, data: list) -> list[PricePoint]:
-        """Parse [[timestamp_ms, price], ...] arrays."""
+        """Parse [[timestamp_ms, price_in_cents], ...] arrays.
+        PriceCharting chart data stores prices in CENTS, not dollars."""
         prices = []
         for point in data:
             if isinstance(point, list) and len(point) >= 2:
                 try:
                     timestamp_ms = int(point[0])
-                    price = float(point[1])
-                    if price <= 0:
+                    price_cents = float(point[1])
+                    if price_cents <= 0:
                         continue
+                    price_dollars = price_cents / 100.0
                     dt = datetime.fromtimestamp(timestamp_ms / 1000)
-                    prices.append(PricePoint(date=dt, price=price))
+                    prices.append(PricePoint(date=dt, price=price_dollars))
                 except (ValueError, TypeError, OSError):
                     continue
         return prices
