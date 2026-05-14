@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nerd Nostalgia Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { 800: '#1a1a2e', 700: '#16213e', 600: '#0f3460' },
+                        accent: '#00d4ff',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: #0d1117; color: #e0e0e0; font-family: 'Inter', system-ui, sans-serif; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; }
+        .signal-strong-buy { color: #00c853; } .signal-buy { color: #4caf50; }
+        .signal-hold { color: #ffd93d; } .signal-sell { color: #ff5252; }
+        .signal-strong-sell { color: #ff1744; }
+        .glow { box-shadow: 0 0 15px rgba(0, 212, 255, 0.1); }
+        input, select { background: #0d1117; border: 1px solid #30363d; color: #e0e0e0; border-radius: 8px; padding: 8px 12px; }
+        input:focus, select:focus { outline: none; border-color: #00d4ff; }
+        .tab-active { border-bottom: 2px solid #00d4ff; color: #00d4ff; }
+        .badge { padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+        .badge-buy { background: rgba(0, 200, 83, 0.15); color: #00c853; }
+        .badge-sell { background: rgba(255, 23, 68, 0.15); color: #ff1744; }
+        .badge-hold { background: rgba(255, 217, 61, 0.15); color: #ffd93d; }
+    </style>
+</head>
+<body x-data="app()" x-init="init()">
+
+<!-- HEADER -->
+<header class="border-b border-gray-800 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🎴</span>
+            <h1 class="text-xl font-bold text-white">Nerd Nostalgia <span class="text-cyan-400">Analytics</span></h1>
+        </div>
+        <div class="flex items-center gap-4 text-sm text-gray-400">
+            <span x-text="'Watchlist: ' + stats.watchlist_count"></span>
+            <span x-text="'Alert: ' + stats.alert_count"></span>
+        </div>
+    </div>
+</header>
+
+<!-- TABS -->
+<nav class="border-b border-gray-800 px-6">
+    <div class="max-w-7xl mx-auto flex gap-6 text-sm">
+        <template x-for="tab in ['Dashboard', 'Segnali', 'Ricerca', 'Deals', 'Hype']">
+            <button @click="activeTab = tab"
+                    :class="activeTab === tab ? 'tab-active' : 'text-gray-500 hover:text-gray-300'"
+                    class="py-3 px-1 font-medium transition" x-text="tab"></button>
+        </template>
+    </div>
+</nav>
+
+<main class="max-w-7xl mx-auto p-6 space-y-6">
+
+    <!-- DASHBOARD TAB -->
+    <div x-show="activeTab === 'Dashboard'" x-cloak>
+        <!-- Stats cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="card p-4 glow">
+                <p class="text-gray-400 text-xs uppercase">Investito</p>
+                <p class="text-xl font-bold text-white" x-text="'$' + portfolio.total_invested?.toFixed(2)"></p>
+            </div>
+            <div class="card p-4 glow">
+                <p class="text-gray-400 text-xs uppercase">Valore Attuale</p>
+                <p class="text-xl font-bold text-white" x-text="'$' + portfolio.total_current?.toFixed(2)"></p>
+            </div>
+            <div class="card p-4 glow">
+                <p class="text-gray-400 text-xs uppercase">P&L</p>
+                <p class="text-xl font-bold" :class="portfolio.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'"
+                   x-text="'$' + portfolio.total_pnl?.toFixed(2) + ' (' + portfolio.total_pnl_pct?.toFixed(1) + '%)'"></p>
+            </div>
+            <div class="card p-4 glow">
+                <p class="text-gray-400 text-xs uppercase">Vendite P&L</p>
+                <p class="text-xl font-bold" :class="stats.realized_pnl >= 0 ? 'text-green-400' : 'text-red-400'"
+                   x-text="'$' + stats.realized_pnl?.toFixed(2)"></p>
+            </div>
+        </div>
+
+        <!-- Portfolio table -->
+        <div class="card p-4">
+            <h2 class="text-lg font-semibold text-white mb-4">Portfolio</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="text-gray-400 text-left border-b border-gray-700">
+                        <tr><th class="pb-2">Prodotto</th><th>Acquisto</th><th>Attuale</th><th>P&L</th></tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="item in portfolio.items" :key="item.name">
+                            <tr class="border-b border-gray-800 hover:bg-gray-800/50">
+                                <td class="py-2 text-white" x-text="item.name.substring(0, 40)"></td>
+                                <td class="text-gray-400" x-text="'$' + item.buy_price?.toFixed(2) + ' x' + item.quantity"></td>
+                                <td class="text-gray-300" x-text="item.current_price ? '$' + item.current_price.toFixed(2) : 'N/D'"></td>
+                                <td :class="item.pnl >= 0 ? 'text-green-400' : 'text-red-400'"
+                                    x-text="'$' + item.pnl?.toFixed(2) + ' (' + item.pnl_pct?.toFixed(1) + '%)'"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <p x-show="!portfolio.items?.length" class="text-gray-500 py-4 text-center">Portfolio vuoto</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEGNALI TAB -->
+    <div x-show="activeTab === 'Segnali'" x-cloak>
+        <div class="card p-4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-white">Segnali Watchlist</h2>
+                <button @click="loadSignals()" class="text-cyan-400 text-sm hover:underline">Aggiorna</button>
+            </div>
+            <p x-show="loadingSignals" class="text-gray-500 py-4 text-center">Caricamento...</p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm" x-show="!loadingSignals">
+                    <thead class="text-gray-400 text-left border-b border-gray-700">
+                        <tr><th class="pb-2">Prodotto</th><th>Prezzo</th><th>Segnale</th><th>Score</th><th>RSI</th><th>Var</th></tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="s in signals" :key="s.id">
+                            <tr class="border-b border-gray-800 hover:bg-gray-800/50 cursor-pointer"
+                                @click="showChart(s.id, s.name)">
+                                <td class="py-2 text-white" x-text="s.name.substring(0, 35)"></td>
+                                <td class="text-gray-300" x-text="s.price ? '$' + s.price.toFixed(2) : ''"></td>
+                                <td>
+                                    <span class="badge"
+                                          :class="s.signal.includes('BUY') ? 'badge-buy' : s.signal.includes('SELL') ? 'badge-sell' : 'badge-hold'"
+                                          x-text="s.signal"></span>
+                                    <span x-show="s.is_spike" class="text-yellow-400 text-xs ml-1">⚠ SPIKE</span>
+                                </td>
+                                <td :class="s.score > 0 ? 'text-green-400' : s.score < 0 ? 'text-red-400' : 'text-gray-400'"
+                                    x-text="(s.score > 0 ? '+' : '') + s.score"></td>
+                                <td class="text-gray-400" x-text="s.rsi ?? '-'"></td>
+                                <td :class="s.change_short > 0 ? 'text-green-400' : s.change_short < 0 ? 'text-red-400' : 'text-gray-400'"
+                                    x-text="s.change_short != null ? s.change_short.toFixed(1) + '%' : '-'"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Chart modal -->
+        <div x-show="chartVisible" class="card p-4 mt-4" x-cloak>
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-white font-semibold" x-text="chartName"></h3>
+                <button @click="chartVisible = false" class="text-gray-500 hover:text-white">✕</button>
+            </div>
+            <div id="priceChart" style="height: 400px;"></div>
+        </div>
+    </div>
+
+    <!-- RICERCA TAB -->
+    <div x-show="activeTab === 'Ricerca'" x-cloak>
+        <div class="card p-4">
+            <h2 class="text-lg font-semibold text-white mb-4">Cerca Prodotto</h2>
+            <div class="flex gap-2 mb-4">
+                <input type="text" x-model="searchQuery" @keyup.enter="doSearch()"
+                       placeholder="Es: charizard base set, pokemon emerald..." class="flex-1">
+                <button @click="doSearch()" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg">Cerca</button>
+            </div>
+            <div class="space-y-2">
+                <template x-for="r in searchResults" :key="r.external_id">
+                    <div class="flex justify-between items-center p-3 rounded-lg hover:bg-gray-800/50 border border-gray-800">
+                        <div>
+                            <p class="text-white font-medium" x-text="r.name"></p>
+                            <p class="text-gray-500 text-xs" x-text="r.category"></p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-cyan-400 font-bold" x-text="r.price ? '$' + r.price.toFixed(2) : 'N/D'"></p>
+                            <a :href="r.url" target="_blank" class="text-xs text-gray-500 hover:text-cyan-400">PriceCharting ↗</a>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- DEALS TAB -->
+    <div x-show="activeTab === 'Deals'" x-cloak>
+        <div class="card p-4">
+            <h2 class="text-lg font-semibold text-white mb-4">Vinted Deal Finder</h2>
+            <div class="flex gap-2 mb-4">
+                <input type="text" x-model="dealsQuery" @keyup.enter="findDeals()"
+                       placeholder="Es: charizard, pokemon emerald..." class="flex-1">
+                <button @click="findDeals()" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg">Trova Affari</button>
+            </div>
+            <p x-show="dealsMarket" class="text-gray-400 text-sm mb-3"
+               x-text="'Prezzo mercato: $' + dealsMarket?.toFixed(2)"></p>
+            <div class="space-y-2">
+                <template x-for="deal in deals" :key="deal.url">
+                    <a :href="deal.url" target="_blank"
+                       class="flex justify-between items-center p-3 rounded-lg hover:bg-gray-800/50 border border-gray-800 block">
+                        <div>
+                            <p class="text-white" x-text="deal.title.substring(0, 50)"></p>
+                            <p class="text-gray-500 text-xs" x-text="deal.seller + (deal.country !== 'it' ? ' (' + deal.country.toUpperCase() + ')' : '')"></p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-green-400 font-bold" x-text="'€' + deal.price.toFixed(2)"></p>
+                            <p class="text-green-500 text-xs" x-text="'-' + deal.discount.toFixed(0) + '%'"></p>
+                        </div>
+                    </a>
+                </template>
+                <p x-show="dealsSearched && !deals.length" class="text-gray-500 py-4 text-center">Nessun affare trovato</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- HYPE TAB -->
+    <div x-show="activeTab === 'Hype'" x-cloak>
+        <div class="card p-4">
+            <h2 class="text-lg font-semibold text-white mb-4">Hype Monitor (Reddit)</h2>
+            <div class="flex gap-2 mb-4">
+                <input type="text" x-model="hypeQuery" @keyup.enter="checkHype()"
+                       placeholder="Es: charizard, pokemon 151..." class="flex-1">
+                <button @click="checkHype()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">Analizza Hype</button>
+            </div>
+            <div x-show="hypeData">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="text-4xl font-bold" :class="hypeData?.score >= 50 ? 'text-orange-400' : 'text-gray-400'"
+                         x-text="hypeData?.score + '/100'"></div>
+                    <p class="text-gray-300" x-text="hypeData?.description"></p>
+                </div>
+                <div class="space-y-2">
+                    <template x-for="post in hypeData?.posts" :key="post.url">
+                        <a :href="post.url" target="_blank"
+                           class="flex justify-between items-center p-2 rounded hover:bg-gray-800/50 block">
+                            <div class="flex-1">
+                                <p class="text-white text-sm" x-text="post.title.substring(0, 60)"></p>
+                                <p class="text-gray-500 text-xs" x-text="'r/' + post.subreddit + ' · ' + post.date"></p>
+                            </div>
+                            <div class="text-right text-xs text-gray-400 ml-4">
+                                <span x-text="'⬆' + post.score"></span>
+                                <span x-text="'💬' + post.comments" class="ml-2"></span>
+                            </div>
+                        </a>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<script>
+function app() {
+    return {
+        activeTab: 'Dashboard',
+        portfolio: { items: [], total_invested: 0, total_current: 0, total_pnl: 0, total_pnl_pct: 0 },
+        stats: { watchlist_count: 0, alert_count: 0, realized_pnl: 0 },
+        signals: [], loadingSignals: false,
+        chartVisible: false, chartName: '',
+        searchQuery: '', searchResults: [],
+        dealsQuery: '', deals: [], dealsMarket: null, dealsSearched: false,
+        hypeQuery: '', hypeData: null,
+
+        async init() {
+            await Promise.all([this.loadPortfolio(), this.loadStats()]);
+        },
+
+        async loadPortfolio() {
+            const r = await fetch('/api/portfolio');
+            this.portfolio = await r.json();
+        },
+
+        async loadStats() {
+            const r = await fetch('/api/stats');
+            this.stats = await r.json();
+        },
+
+        async loadSignals() {
+            this.loadingSignals = true;
+            const r = await fetch('/api/signals?limit=30');
+            const data = await r.json();
+            this.signals = data.signals;
+            this.loadingSignals = false;
+        },
+
+        async showChart(productId, name) {
+            this.chartName = name;
+            this.chartVisible = true;
+            const r = await fetch(`/api/chart/${productId}`);
+            const data = await r.json();
+            if (data.error) return;
+
+            const traces = [{
+                x: data.dates, y: data.prices, type: 'scatter', mode: 'lines',
+                name: 'Prezzo', line: { color: '#00d4ff', width: 2 },
+                fill: 'tozeroy', fillcolor: 'rgba(0,212,255,0.05)',
+            }];
+            if (data.sma3) traces.push({ x: data.dates, y: data.sma3, type: 'scatter', name: 'SMA3', line: { color: '#ff6b6b', width: 1 } });
+            if (data.sma6) traces.push({ x: data.dates, y: data.sma6, type: 'scatter', name: 'SMA6', line: { color: '#ffd93d', width: 1 } });
+            if (data.sma12) traces.push({ x: data.dates, y: data.sma12, type: 'scatter', name: 'SMA12', line: { color: '#6bcb77', width: 1 } });
+
+            Plotly.newPlot('priceChart', traces, {
+                paper_bgcolor: '#161b22', plot_bgcolor: '#0d1117',
+                font: { color: '#e0e0e0' },
+                xaxis: { gridcolor: '#30363d' }, yaxis: { gridcolor: '#30363d', title: 'Prezzo ($)' },
+                margin: { t: 10, b: 40, l: 60, r: 20 },
+                legend: { orientation: 'h', y: 1.1 },
+            }, { responsive: true });
+        },
+
+        async doSearch() {
+            if (!this.searchQuery) return;
+            const r = await fetch(`/api/search?q=${encodeURIComponent(this.searchQuery)}`);
+            const data = await r.json();
+            this.searchResults = data.results;
+        },
+
+        async findDeals() {
+            if (!this.dealsQuery) return;
+            this.dealsSearched = true;
+            const r = await fetch(`/api/deals?q=${encodeURIComponent(this.dealsQuery)}`);
+            const data = await r.json();
+            this.deals = data.deals;
+            this.dealsMarket = data.market_price_usd;
+        },
+
+        async checkHype() {
+            if (!this.hypeQuery) return;
+            const r = await fetch(`/api/hype?q=${encodeURIComponent(this.hypeQuery)}`);
+            this.hypeData = await r.json();
+        },
+    }
+}
+</script>
+</body>
+</html>

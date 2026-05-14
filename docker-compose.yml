@@ -1,0 +1,8 @@
+services:
+  bot:
+    build: .
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./nerd_nostalgia.db:/app/nerd_nostalgia.db
+    restart: unless-stopped
