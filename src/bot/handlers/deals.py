@@ -38,13 +38,16 @@ async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Provo comunque a cercare su Vinted..."
         )
         # Just show Vinted listings without deal comparison
-        listings = await vinted.search_listings(query, max_results=10, order="price_low_to_high")
-        if not listings:
-            await msg.edit_text("Nessun risultato su Vinted.")
+        listings = await vinted.search_listings(query, max_results=20, order="price_low_to_high")
+        filtered = [l for l in listings
+                    if not vinted.is_suspicious(l)
+                    and vinted._title_matches(l.title, query)]
+        if not filtered:
+            await msg.edit_text("Nessun risultato rilevante su Vinted.")
             return
 
         lines = [f"🛒 *Inserzioni Vinted per '{query}'*\n"]
-        for l in listings:
+        for l in filtered[:10]:
             lines.append(
                 f"€{l.price_eur:.2f} — [{l.title[:50]}]({l.url})\n"
                 f"   Venditore: {l.seller}"
@@ -107,14 +110,19 @@ async def vinted_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = " ".join(context.args)
     msg = await update.message.reply_text(f"🔍 Cerco su Vinted '{query}'...")
 
-    listings = await vinted.search_listings(query, max_results=15, order="price_low_to_high")
+    listings = await vinted.search_listings(query, max_results=30, order="price_low_to_high")
 
-    if not listings:
-        await msg.edit_text("Nessun risultato su Vinted.")
+    # Filter: remove suspicious/catalog listings and irrelevant results
+    filtered = [l for l in listings
+                if not vinted.is_suspicious(l)
+                and vinted._title_matches(l.title, query)]
+
+    if not filtered:
+        await msg.edit_text("Nessun risultato rilevante su Vinted.")
         return
 
-    lines = [f"🛒 *Vinted: '{query}'* ({len(listings)} risultati)\n"]
-    for l in listings:
+    lines = [f"🛒 *Vinted: '{query}'* ({len(filtered)} risultati)\n"]
+    for l in filtered[:15]:
         lines.append(f"€{l.price_eur:.2f} — [{l.title[:50]}]({l.url})")
 
     await msg.edit_text("\n".join(lines), parse_mode="Markdown", disable_web_page_preview=True)
