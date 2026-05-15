@@ -34,6 +34,7 @@ def aggregate_prices(
     ebay_sold_avg_eur: float | None = None,
     ebay_sold_count: int = 0,
     retrogamingshop_avg_eur: float | None = None,
+    twentysixbits_avg_eur: float | None = None,
     usd_to_eur_rate: float = 0.92,
 ) -> AggregatedPrice:
     """
@@ -90,6 +91,13 @@ def aggregate_prices(
         sources.append(SourcePrice(
             "TCGPlayer (market)", tcg_eur, 3.0,
             f"${tcgplayer_market_usd:.2f} (mercato USA)"
+        ))
+
+    # 26bits.it (EU retail — Italian retrogaming store)
+    if twentysixbits_avg_eur and twentysixbits_avg_eur > 0:
+        sources.append(SourcePrice(
+            "26bits.it", twentysixbits_avg_eur, 3.5,
+            "Prezzo negozio retrogaming IT"
         ))
 
     # RetroGamingShop (EU retail — real store prices)
