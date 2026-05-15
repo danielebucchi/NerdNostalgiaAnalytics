@@ -1,4 +1,5 @@
 import logging
+import re
 
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -8,6 +9,13 @@ from sqlalchemy import select
 from src.collectors.pricecharting import PriceChartingCollector
 from src.collectors.vinted import VintedCollector
 from src.db.database import async_session
+
+
+def _esc(text: str) -> str:
+    """Escape Markdown special characters in user-generated text."""
+    for ch in ['*', '_', '`', '[', ']', '(', ')']:
+        text = text.replace(ch, '')
+    return text
 from src.db.models import Product
 
 logger = logging.getLogger(__name__)
@@ -49,8 +57,8 @@ async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lines = [f"🛒 *Inserzioni Vinted per '{query}'*\n"]
         for l in filtered[:10]:
             lines.append(
-                f"€{l.price_eur:.2f} — [{l.title[:50]}]({l.url})\n"
-                f"   Venditore: {l.seller}"
+                f"€{l.price_eur:.2f} — [{_esc(l.title[:50])}]({l.url})\n"
+                f"   Venditore: {_esc(l.seller)}"
             )
         await msg.edit_text("\n".join(lines), parse_mode="Markdown", disable_web_page_preview=True)
         return
@@ -76,7 +84,7 @@ async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"Le inserzioni piu' economiche:\n"
             ]
             for l in listings:
-                lines.append(f"€{l.price_eur:.2f} — [{l.title[:50]}]({l.url})")
+                lines.append(f"€{l.price_eur:.2f} — [{_esc(l.title[:50])}]({l.url})")
             await msg.edit_text("\n".join(lines), parse_mode="Markdown", disable_web_page_preview=True)
         else:
             await msg.edit_text("Nessun risultato su Vinted per questa ricerca.")
@@ -90,8 +98,8 @@ async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for listing, discount in deals:
         emoji = "🔥🔥" if discount > 50 else "🔥" if discount > 30 else "💰"
         lines.append(
-            f"{emoji} *€{listing.price_eur:.2f}* (-{discount:.0f}%) — [{listing.title[:45]}]({listing.url})\n"
-            f"   Venditore: {listing.seller}"
+            f"{emoji} *€{listing.price_eur:.2f}* (-{discount:.0f}%) — [{_esc(listing.title[:45])}]({listing.url})\n"
+            f"   Venditore: {_esc(listing.seller)}"
         )
 
     lines.append(f"\n⚠ Controlla sempre condizioni e foto prima di acquistare!")
@@ -142,7 +150,7 @@ async def _vinted_search_page(message, query: str, page: int, context):
 
     lines = [f"🛒 *Vinted: '{query}'* (pag. {page}, {len(filtered)} totali)\n"]
     for l in page_items:
-        lines.append(f"€{l.price_eur:.2f} — [{l.title[:50]}]({l.url})")
+        lines.append(f"€{l.price_eur:.2f} — [{_esc(l.title[:50])}]({l.url})")
 
     # Store query in context for pagination
     # Use a short hash to keep callback_data under 64 bytes
@@ -202,7 +210,7 @@ async def vinted_page_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     lines = [f"🛒 *Vinted: '{query}'* (pag. {page}, {len(filtered)} totali)\n"]
     for l in page_items:
-        lines.append(f"€{l.price_eur:.2f} — [{l.title[:50]}]({l.url})")
+        lines.append(f"€{l.price_eur:.2f} — [{_esc(l.title[:50])}]({l.url})")
 
     buttons = []
     if page > 1:
