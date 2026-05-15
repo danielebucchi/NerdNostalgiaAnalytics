@@ -36,75 +36,146 @@ async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     query = " ".join(context.args)
-    msg = await update.message.reply_text(f"🔍 Cerco affari su Vinted per '{query}'...")
+    page = 1
+    await _deals_search_page(update.message, query, page, context)
 
-    # Get market price from PriceCharting
+
+async def _deals_search_page(message, query: str, page: int, context):
+    """Fetch and display a page of Vinted deals."""
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    import hashlib
+
+    msg = await message.reply_text(f"🔍 Cerco affari per '{query}' (pagina {page})...")
+
+    # Get market price
     results = await pc_collector.search(query, max_results=1)
-    if not results or not results[0].current_price:
-        await msg.edit_text(
-            f"Prezzo di mercato non trovato per '{query}'.\n"
-            f"Provo comunque a cercare su Vinted..."
-        )
-        # Just show Vinted listings without deal comparison
-        listings = await vinted.search_listings(query, max_results=20, order="price_low_to_high")
-        filtered = [l for l in listings
-                    if not vinted.is_suspicious(l)
-                    and vinted._title_matches(l.title, query)]
-        if not filtered:
-            await msg.edit_text("Nessun risultato rilevante su Vinted.")
-            return
+    market_price = results[0].current_price if results and results[0].current_price else None
+    product_name = results[0].name if results else query
 
-        lines = [f"🛒 *Inserzioni Vinted per '{query}'*\n"]
-        for l in filtered[:10]:
-            lines.append(
-                f"€{l.price_eur:.2f} — [{_esc(l.title[:50])}]({l.url})\n"
-                f"   Venditore: {_esc(l.seller)}"
-            )
-        await msg.edit_text("\n".join(lines), parse_mode="Markdown", disable_web_page_preview=True)
+    # Fetch by relevance, filter, sort by price
+    listings = await vinted.search_listings(query, max_results=96, order="relevance")
+    filtered = [l for l in listings
+                if not vinted.is_suspicious(l)
+                and vinted._title_matches(l.title, query)]
+    filtered.sort(key=lambda l: l.price_eur)
+
+    if not filtered:
+        await msg.edit_text("Nessun risultato rilevante su Vinted.")
         return
 
-    product = results[0]
-    market_price = product.current_price
+    # Paginate
+    page_size = 10
+    start = (page - 1) * page_size
+    page_items = filtered[start:start + page_size]
+
+    if not page_items:
+        await msg.edit_text("Nessun altro risultato.")
+        return
+
+    # Header
+    if market_price:
+        market_eur = market_price * 0.92
+        lines = [f"🔥 *Deals: '{_esc(product_name)}'* (pag. {page})\n"
+                 f"💵 Mercato: ${market_price:.2f} (~€{market_eur:.2f})\n"]
+    else:
+        market_eur = None
+        lines = [f"🛒 *Vinted: '{query}'* (pag. {page}, {len(filtered)} totali)\n"]
+
+    for l in page_items:
+        if market_eur and l.price_eur < market_eur:
+            discount = ((market_eur - l.price_eur) / market_eur) * 100
+            emoji = "🔥🔥" if discount > 50 else "🔥" if discount > 30 else "💰"
+            lines.append(f"{emoji} *€{l.price_eur:.2f}* (-{discount:.0f}%) — [{_esc(l.title[:45])}]({l.url})")
+        else:
+            lines.append(f"€{l.price_eur:.2f} — [{_esc(l.title[:45])}]({l.url})")
+
+    # Store query for pagination
+    query_hash = hashlib.md5(f"deals_{query}".encode()).hexdigest()[:8]
+    context.bot_data[f"dq_{query_hash}"] = query
+
+    # Buttons
+    buttons = []
+    if page > 1:
+        buttons.append(InlineKeyboardButton("⬅ Precedente", callback_data=f"dp:{query_hash}:{page - 1}"))
+    if start + page_size < len(filtered):
+        buttons.append(InlineKeyboardButton("Carica altri ➡", callback_data=f"dp:{query_hash}:{page + 1}"))
+
+    markup = InlineKeyboardMarkup([buttons]) if buttons else None
 
     await msg.edit_text(
-        f"💵 Prezzo mercato: ${market_price:.2f} (~€{market_price * 0.92:.2f})\n"
-        f"🔍 Cerco affari su Vinted..."
+        "\n".join(lines),
+        parse_mode="Markdown",
+        disable_web_page_preview=True,
+        reply_markup=markup,
     )
 
-    deals = await vinted.find_deals(query, market_price, max_results=10)
 
-    if not deals:
-        # Show cheapest listings anyway
-        listings = await vinted.search_listings(query, max_results=5, order="price_low_to_high")
-        if listings:
-            lines = [
-                f"🛒 *{product.name}*\n"
-                f"💵 Prezzo mercato: ${market_price:.2f} (~€{market_price * 0.92:.2f})\n\n"
-                f"Nessun affare trovato sotto il prezzo di mercato.\n"
-                f"Le inserzioni piu' economiche:\n"
-            ]
-            for l in listings:
-                lines.append(f"€{l.price_eur:.2f} — [{_esc(l.title[:50])}]({l.url})")
-            await msg.edit_text("\n".join(lines), parse_mode="Markdown", disable_web_page_preview=True)
-        else:
-            await msg.edit_text("Nessun risultato su Vinted per questa ricerca.")
+async def deals_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle deals pagination."""
+    query_cb = update.callback_query
+    await query_cb.answer()
+
+    parts = query_cb.data.split(":")
+    query_hash = parts[1]
+    page = int(parts[2])
+
+    query = context.bot_data.get(f"dq_{query_hash}", "")
+    if not query:
+        await query_cb.edit_message_text("Sessione scaduta. Rifai /deals <nome>.")
         return
 
-    lines = [
-        f"🔥 *AFFARI trovati per '{product.name}'*\n"
-        f"💵 Prezzo mercato: ${market_price:.2f} (~€{market_price * 0.92:.2f})\n"
-    ]
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    import hashlib
 
-    for listing, discount in deals:
-        emoji = "🔥🔥" if discount > 50 else "🔥" if discount > 30 else "💰"
-        lines.append(
-            f"{emoji} *€{listing.price_eur:.2f}* (-{discount:.0f}%) — [{_esc(listing.title[:45])}]({listing.url})\n"
-            f"   Venditore: {_esc(listing.seller)}"
-        )
+    await query_cb.edit_message_text(f"🔍 Carico pagina {page}...")
 
-    lines.append(f"\n⚠ Controlla sempre condizioni e foto prima di acquistare!")
+    results = await pc_collector.search(query, max_results=1)
+    market_price = results[0].current_price if results and results[0].current_price else None
+    market_eur = market_price * 0.92 if market_price else None
+    product_name = results[0].name if results else query
 
-    await msg.edit_text("\n".join(lines), parse_mode="Markdown", disable_web_page_preview=True)
+    listings = await vinted.search_listings(query, max_results=96, order="relevance")
+    filtered = [l for l in listings
+                if not vinted.is_suspicious(l)
+                and vinted._title_matches(l.title, query)]
+    filtered.sort(key=lambda l: l.price_eur)
+
+    page_size = 10
+    start = (page - 1) * page_size
+    page_items = filtered[start:start + page_size]
+
+    if not page_items:
+        await query_cb.edit_message_text("Nessun altro risultato.")
+        return
+
+    if market_eur:
+        lines = [f"🔥 *Deals: '{_esc(product_name)}'* (pag. {page})\n"
+                 f"💵 Mercato: ${market_price:.2f} (~€{market_eur:.2f})\n"]
+    else:
+        lines = [f"🛒 *Vinted: '{query}'* (pag. {page}, {len(filtered)} totali)\n"]
+
+    for l in page_items:
+        if market_eur and l.price_eur < market_eur:
+            discount = ((market_eur - l.price_eur) / market_eur) * 100
+            emoji = "🔥🔥" if discount > 50 else "🔥" if discount > 30 else "💰"
+            lines.append(f"{emoji} *€{l.price_eur:.2f}* (-{discount:.0f}%) — [{_esc(l.title[:45])}]({l.url})")
+        else:
+            lines.append(f"€{l.price_eur:.2f} — [{_esc(l.title[:45])}]({l.url})")
+
+    buttons = []
+    if page > 1:
+        buttons.append(InlineKeyboardButton("⬅ Precedente", callback_data=f"dp:{query_hash}:{page - 1}"))
+    if start + page_size < len(filtered):
+        buttons.append(InlineKeyboardButton("Carica altri ➡", callback_data=f"dp:{query_hash}:{page + 1}"))
+
+    markup = InlineKeyboardMarkup([buttons]) if buttons else None
+
+    await query_cb.edit_message_text(
+        "\n".join(lines),
+        parse_mode="Markdown",
+        disable_web_page_preview=True,
+        reply_markup=markup,
+    )
 
 
 async def vinted_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
