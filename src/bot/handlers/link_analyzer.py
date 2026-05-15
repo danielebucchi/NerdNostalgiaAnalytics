@@ -19,11 +19,13 @@ from src.analysis.prediction import predict_prices
 from src.bot.handlers.signal import get_or_fetch_prices
 from src.bot.handlers.stats import COMMISSIONS
 from src.collectors.pricecharting import PriceChartingCollector
+from src.collectors.pokemontcg_api import search_card_prices
 from src.collectors.vinted import VintedCollector
 from src.db.database import async_session
-from src.db.models import Product
+from src.db.models import Product, ProductCategory
 from src.utils.condition import detect_condition, get_condition_price, CONDITION_EMOJI
 from src.utils.currency import get_exchange_rates, usd_to_eur
+from src.utils.price_aggregator import aggregate_prices, format_aggregated_prices
 from src.utils.buy_links import get_buy_links
 
 logger = logging.getLogger(__name__)
@@ -296,21 +298,55 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await session.commit()
             await session.refresh(product)
 
-    # --- DETECT CONDITION from title + description ---
+    # --- DETECT CONDITION ---
     listing_text = f"{title} {listing.get('description', '')}"
     detected_condition = detect_condition(listing_text)
     cond_emoji = CONDITION_EMOJI.get(detected_condition, "")
 
-    # --- GET CORRECT PRICE FOR THIS CONDITION ---
+    # --- COLLECT ALL PRICES ---
+    # 1. PriceCharting (by condition)
     conditions = await pc.get_all_conditions(product_result.external_id)
-    market_usd, condition_used = get_condition_price(conditions, detected_condition)
-    market_usd = market_usd or product_result.current_price or 0
-    market_eur = usd_to_eur(market_usd, rates) if market_usd else 0
+    pc_usd, condition_used = get_condition_price(conditions, detected_condition)
+    pc_usd = pc_usd or product_result.current_price or 0
+
+    # 2. Pokemon TCG API (Cardmarket + TCGPlayer) — only for cards
+    cm_trend = cm_avg_sell = cm_low = tcg_market = None
+    is_card = product.category in (
+        ProductCategory.POKEMON, ProductCategory.MAGIC, ProductCategory.YUGIOH,
+    )
+    if is_card:
+        tcg_cards = await search_card_prices(search_query, max_results=1)
+        if tcg_cards:
+            tcg_card = tcg_cards[0]
+            cm_trend = tcg_card.cm_trend
+            cm_avg_sell = tcg_card.cm_avg_sell
+            cm_low = tcg_card.cm_low
+            tcg_market = tcg_card.tcg_market
+
+    # 3. Vinted
+    vinted_listings = await vinted.search_listings(search_query, max_results=10, order="price_low_to_high")
+    vinted_relevant = [l for l in vinted_listings
+                       if vinted._title_matches(l.title, search_query)
+                       and not vinted.is_suspicious(l)]
+    vinted_avg = (sum(l.price_eur for l in vinted_relevant[:5]) / min(5, len(vinted_relevant))
+                  if vinted_relevant else None)
+
+    # 4. Aggregate all sources
+    eur_rate = rates.get("EUR", 0.92) if rates else 0.92
+    agg = aggregate_prices(
+        pricecharting_usd=pc_usd,
+        cardmarket_trend_eur=cm_trend,
+        cardmarket_avg_sell_eur=cm_avg_sell,
+        cardmarket_low_eur=cm_low,
+        tcgplayer_market_usd=tcg_market,
+        vinted_avg_eur=vinted_avg,
+        usd_to_eur_rate=eur_rate,
+    )
+    fair_value = agg.fair_value_eur
 
     # Analysis
     df = await get_or_fetch_prices(product.id)
     analysis = analyze(df) if df is not None and len(df) >= 6 else None
-    prediction = predict_prices(df) if df is not None and len(df) >= 10 else None
 
     # --- VERDICT ---
     lines = [
@@ -321,65 +357,51 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{cond_emoji} Condizione: *{detected_condition}*\n",
     ]
 
-    # Show all condition prices for reference
-    if conditions:
-        lines.append("*Prezzi mercato per condizione:*")
-        for cond_name, cond_prices in conditions.items():
-            if cond_prices and cond_name not in ("Box Only", "Manual Only"):
-                p = cond_prices[-1].price
-                p_eur = usd_to_eur(p, rates)
-                marker = " ← *confronto*" if cond_name == condition_used else ""
-                lines.append(f"  {cond_name}: €{p_eur:.2f}{marker}")
-        lines.append("")
+    # Aggregated fair value
+    lines.append(format_aggregated_prices(agg))
 
-    # Price comparison against CORRECT condition
-    if market_eur > 0:
-        diff = ((price_eur - market_eur) / market_eur) * 100
+    # Comparison
+    if fair_value > 0:
+        diff = ((price_eur - fair_value) / fair_value) * 100
+        lines.append("")
         if diff < -20:
-            lines.append(f"✅ *{abs(diff):.0f}% sotto* il mercato {condition_used} (€{market_eur:.2f})")
+            lines.append(f"✅ *{abs(diff):.0f}% SOTTO* il valore di mercato!")
         elif diff < -5:
-            lines.append(f"🟢 {abs(diff):.0f}% sotto mercato {condition_used} (€{market_eur:.2f})")
+            lines.append(f"🟢 {abs(diff):.0f}% sotto il valore di mercato")
         elif diff < 5:
-            lines.append(f"🟡 Al prezzo di mercato {condition_used} (€{market_eur:.2f})")
+            lines.append(f"🟡 Al prezzo di mercato")
         elif diff < 15:
-            lines.append(f"🟠 {diff:.0f}% sopra mercato {condition_used} (€{market_eur:.2f})")
+            lines.append(f"🟠 {diff:.0f}% sopra il mercato")
         else:
-            lines.append(f"🔴 *{diff:.0f}% sopra* il mercato {condition_used} (€{market_eur:.2f})")
+            lines.append(f"🔴 *{diff:.0f}% SOPRA* il mercato")
 
     if analysis:
         emoji = SIGNAL_EMOJI.get(analysis.signal, "")
-        lines.append(f"{emoji} Segnale: {analysis.signal.value}")
-
-    if prediction:
-        change = ((prediction.pred_90d - prediction.current_price) / prediction.current_price * 100
-                  if prediction.current_price > 0 else 0)
-        trend_emoji = "📈" if prediction.trend == "bullish" else "📉" if prediction.trend == "bearish" else "➡️"
-        lines.append(f"{trend_emoji} Previsione 90gg: {change:+.1f}%")
+        lines.append(f"{emoji} Segnale tecnico: {analysis.signal.value}")
 
     # Max offer for resale
-    if market_eur > 0:
+    if fair_value > 0:
         target_margin = 0.30
-        max_offer = market_eur / (1 + target_margin)
+        max_offer = fair_value / (1 + target_margin)
         aggressive = max_offer * 0.80
 
-        lines.append(f"\n🧮 *Offerta consigliata (per 30% margine):*")
+        lines.append(f"\n🧮 *Offerta consigliata (30% margine):*")
         lines.append(f"   Parti da: *€{aggressive:.2f}*")
         lines.append(f"   Max: *€{max_offer:.2f}*")
 
         if price_eur <= aggressive:
-            lines.append(f"\n✅ *AFFARE! A €{price_eur:.2f} hai margine >50%*")
+            lines.append(f"\n✅ *AFFARE! Margine >50%*")
         elif price_eur <= max_offer:
-            margin = ((market_eur - price_eur) / price_eur * 100)
+            margin = ((fair_value - price_eur) / price_eur * 100)
             lines.append(f"\n✅ *Buon acquisto!* Margine ~{margin:.0f}%")
-        elif price_eur <= market_eur * 0.95:
-            margin = ((market_eur - price_eur) / price_eur * 100)
-            lines.append(f"\n🟡 Margine {margin:.0f}% — sotto il target 30% ma comunque positivo")
-        elif price_eur <= market_eur * 1.05:
-            lines.append(f"\n🟠 *Prezzo di mercato* — nessun margine di guadagno")
+        elif price_eur <= fair_value * 0.95:
+            margin = ((fair_value - price_eur) / price_eur * 100)
+            lines.append(f"\n🟡 Margine {margin:.0f}% — positivo ma sotto il 30%")
+        elif price_eur <= fair_value * 1.05:
+            lines.append(f"\n🟠 *Prezzo di mercato* — nessun margine")
         else:
-            lines.append(f"\n🔴 *Troppo caro.* Offri max €{max_offer:.2f}")
+            lines.append(f"\n🔴 *Non conviene.* Offri max €{max_offer:.2f}")
 
-    # Links
     buy_links = get_buy_links(product.name, product.category, product.product_url)
     lines.append(f"\n{buy_links}")
 
