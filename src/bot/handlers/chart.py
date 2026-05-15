@@ -9,6 +9,7 @@ from sqlalchemy import select
 from src.analysis.charts import generate_chart
 from src.bot.handlers.signal import get_or_fetch_prices
 from src.collectors.pricecharting import PriceChartingCollector
+from src.utils.search_match import best_match
 from src.db.database import async_session
 from src.db.models import Product
 
@@ -25,12 +26,12 @@ async def chart_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = " ".join(context.args)
     await update.message.reply_text(f"📈 Genero grafico per '{query}'...")
 
-    results = await collector.search(query)
+    results = await collector.search(query, max_results=10)
     if not results:
         await update.message.reply_text("Prodotto non trovato.")
         return
 
-    product_result = results[0]
+    product_result = results[best_match(query, results)]
 
     # Save to DB
     async with async_session() as session:

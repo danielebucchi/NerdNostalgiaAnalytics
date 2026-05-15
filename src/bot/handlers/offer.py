@@ -16,6 +16,7 @@ from src.bot.handlers.signal import get_or_fetch_prices
 from src.bot.handlers.stats import COMMISSIONS
 from src.collectors.pricecharting import PriceChartingCollector
 from src.collectors.vinted import VintedCollector
+from src.utils.search_match import best_match
 from src.db.database import async_session
 from src.db.models import Product
 from src.utils.currency import get_exchange_rates, usd_to_eur
@@ -65,12 +66,12 @@ async def offer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rates = await get_exchange_rates()
 
     # 1. Market price
-    results = await pc.search(query, max_results=1)
+    results = await pc.search(query, max_results=10)
     if not results:
         await msg.edit_text(f"Prodotto '{query}' non trovato.")
         return
 
-    product_result = results[0]
+    product_result = results[best_match(query, results)]
     market_usd = product_result.current_price or 0
     market_eur = usd_to_eur(market_usd, rates) if market_usd else 0
 

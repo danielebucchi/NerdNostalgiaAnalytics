@@ -16,6 +16,7 @@ from src.bot.handlers.signal import get_or_fetch_prices
 from src.bot.handlers.stats import COMMISSIONS
 from src.collectors.pricecharting import PriceChartingCollector
 from src.utils.condition import detect_condition, get_condition_price, CONDITION_EMOJI
+from src.utils.search_match import best_match
 from src.collectors.reddit import search_hype, calculate_hype_score
 from src.collectors.vinted import VintedCollector
 from src.db.database import async_session
@@ -76,13 +77,14 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     rates = await get_exchange_rates()
 
-    # 1. Market price from PriceCharting
-    results = await pc.search(query, max_results=1)
+    # 1. Market price from PriceCharting — get multiple results and pick best match
+    results = await pc.search(query, max_results=10)
     if not results:
         await msg.edit_text(f"Prodotto '{query}' non trovato su PriceCharting.")
         return
 
-    product_result = results[0]
+    best_idx = best_match(query, results)
+    product_result = results[best_idx]
 
     # Get prices by condition
     conditions = await pc.get_all_conditions(product_result.external_id)

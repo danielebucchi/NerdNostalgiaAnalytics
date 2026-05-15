@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from src.analysis.indicators import analyze, format_analysis, Signal
 from src.collectors.pricecharting import PriceChartingCollector
+from src.utils.search_match import best_match
 from src.db.database import async_session
 from src.db.models import Product, PriceHistory
 from src.utils.buy_links import get_buy_links
@@ -84,12 +85,12 @@ async def signal_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = " ".join(context.args)
     await update.message.reply_text(f"🔍 Analizzo '{query}'...")
 
-    results = await collector.search(query)
+    results = await collector.search(query, max_results=10)
     if not results:
         await update.message.reply_text("Prodotto non trovato.")
         return
 
-    product_result = results[0]
+    product_result = results[best_match(query, results)]
 
     # Save to DB and get ID
     async with async_session() as session:
