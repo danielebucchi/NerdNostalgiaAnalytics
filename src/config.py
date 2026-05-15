@@ -6,6 +6,10 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./nerd_nostalgia.db"
     pricecharting_api_token: str = ""
 
+    # eBay API credentials (get from https://developer.ebay.com/my/keys)
+    ebay_app_id: str = ""
+    ebay_cert_id: str = ""
+
     # Scraping settings
     scrape_delay_seconds: float = 2.0
     max_concurrent_requests: int = 3

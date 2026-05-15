@@ -18,6 +18,7 @@ from src.analysis.indicators import analyze, Signal, SIGNAL_EMOJI
 from src.analysis.prediction import predict_prices
 from src.bot.handlers.signal import get_or_fetch_prices
 from src.bot.handlers.stats import COMMISSIONS
+from src.collectors.ebay import EbayCollector
 from src.collectors.pricecharting import PriceChartingCollector
 from src.collectors.pokemontcg_api import search_card_prices
 from src.collectors.vinted import VintedCollector
@@ -31,6 +32,7 @@ from src.utils.buy_links import get_buy_links
 logger = logging.getLogger(__name__)
 pc = PriceChartingCollector()
 vinted = VintedCollector()
+ebay = EbayCollector()
 
 
 async def _extract_listing_info(url: str) -> dict | None:
@@ -350,7 +352,15 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cm_low = tcg_card.cm_low
             tcg_market = tcg_card.tcg_market
 
-    # 3. Vinted
+    # 3. eBay sold (if API configured)
+    ebay_avg = None
+    ebay_count = 0
+    if ebay.is_configured:
+        ebay_data = await ebay.get_sold_prices(search_query, marketplace="it")
+        ebay_avg = ebay_data.get("avg")
+        ebay_count = ebay_data.get("count", 0)
+
+    # 4. Vinted
     vinted_listings = await vinted.search_listings(search_query, max_results=10, order="price_low_to_high")
     vinted_relevant = [l for l in vinted_listings
                        if vinted._title_matches(l.title, search_query)
@@ -358,7 +368,7 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     vinted_avg = (sum(l.price_eur for l in vinted_relevant[:5]) / min(5, len(vinted_relevant))
                   if vinted_relevant else None)
 
-    # 4. Aggregate all sources
+    # 5. Aggregate all sources
     eur_rate = rates.get("EUR", 0.92) if rates else 0.92
     agg = aggregate_prices(
         pricecharting_usd=pc_usd,
@@ -367,6 +377,8 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cardmarket_low_eur=cm_low,
         tcgplayer_market_usd=tcg_market,
         vinted_avg_eur=vinted_avg,
+        ebay_sold_avg_eur=ebay_avg,
+        ebay_sold_count=ebay_count,
         usd_to_eur_rate=eur_rate,
     )
     fair_value = agg.fair_value_eur

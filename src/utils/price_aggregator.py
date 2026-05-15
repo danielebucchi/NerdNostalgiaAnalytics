@@ -31,12 +31,15 @@ def aggregate_prices(
     tcgplayer_market_usd: float | None = None,
     vinted_avg_eur: float | None = None,
     vinted_min_eur: float | None = None,
+    ebay_sold_avg_eur: float | None = None,
+    ebay_sold_count: int = 0,
     usd_to_eur_rate: float = 0.92,
 ) -> AggregatedPrice:
     """
     Aggregate prices from multiple sources into a fair market value.
 
     Weight logic (for EU buyer):
+    - eBay sold EU: highest weight (real EU sales, actual transactions)
     - Cardmarket avg sell: highest weight (real EU sales data)
     - Cardmarket trend: high weight (EU market indicator)
     - PriceCharting: medium weight (USA market, good history)
@@ -44,6 +47,15 @@ def aggregate_prices(
     - Vinted avg: lower weight (asking prices, not sales)
     """
     sources = []
+
+    # eBay sold (real transactions — best data)
+    if ebay_sold_avg_eur and ebay_sold_avg_eur > 0:
+        # Weight increases with more sales data
+        weight = min(5.0, 3.0 + ebay_sold_count * 0.1)
+        sources.append(SourcePrice(
+            "eBay venduti (EU)", ebay_sold_avg_eur, weight,
+            f"Media {ebay_sold_count} vendite reali"
+        ))
 
     # EU sources (higher weight for EU buyer)
     if cardmarket_avg_sell_eur and cardmarket_avg_sell_eur > 0:
