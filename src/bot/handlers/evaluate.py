@@ -15,6 +15,7 @@ from src.analysis.prediction import predict_prices
 from src.bot.handlers.signal import get_or_fetch_prices
 from src.bot.handlers.stats import COMMISSIONS
 from src.collectors.pricecharting import PriceChartingCollector
+from src.utils.condition import detect_condition, get_condition_price, CONDITION_EMOJI
 from src.collectors.reddit import search_hype, calculate_hype_score
 from src.collectors.vinted import VintedCollector
 from src.db.database import async_session
@@ -35,21 +36,37 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args or []
     if len(args) < 2:
         await update.message.reply_text(
-            "Uso: /evaluate <nome prodotto> <prezzo offerto in €>\n\n"
+            "Uso: /evaluate <nome> <prezzo€> [condizione]\n\n"
             "Es: /evaluate charizard base set 350\n"
-            "Es: /evaluate pokemon emerald 25\n\n"
-            "Analizza se conviene acquistare a quel prezzo."
+            "Es: /evaluate pokemon emerald 25 loose\n"
+            "Es: /evaluate metroid fusion 50 cib\n\n"
+            "Condizioni: loose, cib, sealed, graded\n"
+            "Default: loose (solo cartuccia/carta)"
         )
         return
 
-    # Last arg is the price
+    # Last arg is the price, second-to-last might be condition
+    condition_map = {
+        "loose": "Ungraded", "sfuso": "Ungraded", "cartuccia": "Ungraded",
+        "cib": "Complete in Box", "completo": "Complete in Box", "boxed": "Complete in Box",
+        "sealed": "New/Sealed", "sigillato": "New/Sealed", "nuovo": "New/Sealed",
+        "graded": "Graded (PSA)", "psa": "Graded (PSA)",
+    }
+    forced_condition = None
+
     try:
         offered_eur = float(args[-1].replace(",", ".").replace("€", "").replace("$", ""))
+        query_args = args[:-1]
     except ValueError:
         await update.message.reply_text("L'ultimo argomento deve essere il prezzo in €.")
         return
 
-    query = " ".join(args[:-1])
+    # Check if there's a condition keyword before the price
+    if len(query_args) > 1 and query_args[-1].lower() in condition_map:
+        forced_condition = condition_map[query_args[-1].lower()]
+        query_args = query_args[:-1]
+
+    query = " ".join(query_args)
 
     msg = await update.message.reply_text(
         f"🔍 Valuto se *{query}* a *€{offered_eur:.2f}* conviene...\n"
@@ -66,7 +83,12 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     product_result = results[0]
-    market_usd = product_result.current_price or 0
+
+    # Get prices by condition
+    conditions = await pc.get_all_conditions(product_result.external_id)
+    detected_condition = forced_condition or "Ungraded"  # Default to loose
+    market_usd, condition_used = get_condition_price(conditions, detected_condition)
+    market_usd = market_usd or product_result.current_price or 0
     market_eur = usd_to_eur(market_usd, rates) if market_usd else 0
 
     # Save to DB
@@ -206,9 +228,11 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         verdict = "🔴 *NON CONVIENE* — prezzo troppo alto o momento sbagliato"
 
     # --- FORMAT OUTPUT ---
+    cond_emoji = CONDITION_EMOJI.get(condition_used, "")
     lines = [
         f"💰 *VALUTAZIONE: {product.name}*",
-        f"🏷 Prezzo offerto: *€{offered_eur:.2f}*\n",
+        f"🏷 Prezzo offerto: *€{offered_eur:.2f}*",
+        f"{cond_emoji} Condizione: *{condition_used}*\n",
         f"{verdict}",
         f"📊 Score: *{score:+d}/100*\n",
         "━━━━━━━━━━━━━━━━",
@@ -218,10 +242,14 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for reason in reasons:
         lines.append(f"  {reason}")
 
-    # Reference prices
-    lines.append("\n*Prezzi di riferimento:*")
-    if market_eur > 0:
-        lines.append(f"  📈 Mercato (PriceCharting): €{market_eur:.2f}")
+    # Reference prices by condition
+    lines.append("\n*Prezzi mercato per condizione:*")
+    if conditions:
+        for cond_name, cond_prices in conditions.items():
+            if cond_prices and cond_name not in ("Box Only", "Manual Only"):
+                p_eur = usd_to_eur(cond_prices[-1].price, rates)
+                marker = " ← *confronto*" if cond_name == condition_used else ""
+                lines.append(f"  {cond_name}: €{p_eur:.2f}{marker}")
     if vinted_min:
         lines.append(f"  👗 Vinted minimo: €{vinted_min:.2f}")
     if vinted_avg:

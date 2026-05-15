@@ -22,6 +22,7 @@ from src.collectors.pricecharting import PriceChartingCollector
 from src.collectors.vinted import VintedCollector
 from src.db.database import async_session
 from src.db.models import Product
+from src.utils.condition import detect_condition, get_condition_price, CONDITION_EMOJI
 from src.utils.currency import get_exchange_rates, usd_to_eur
 from src.utils.buy_links import get_buy_links
 
@@ -32,8 +33,8 @@ vinted = VintedCollector()
 
 async def _extract_listing_info(url: str) -> dict | None:
     """
-    Extract title and price from a listing URL.
-    Returns {"title": str, "price_eur": float, "platform": str} or None.
+    Extract title, price, and description from a listing URL.
+    Returns {"title": str, "price_eur": float, "platform": str, "description": str} or None.
     """
     try:
         async with httpx.AsyncClient(
@@ -73,13 +74,22 @@ async def _extract_listing_info(url: str) -> dict | None:
 
 
 def _parse_vinted(soup: BeautifulSoup, url: str) -> dict | None:
-    # JSON-LD is the most reliable
+    description = ""
+    # Get description from page
+    desc_el = soup.select_one('[itemprop="description"]') or soup.select_one('[data-testid*="description"]')
+    if desc_el:
+        description = desc_el.get_text(strip=True)
+
+    # JSON-LD is the most reliable for title/price
     for script in soup.select('script[type="application/ld+json"]'):
         try:
             data = json.loads(script.string)
             if data.get("@type") == "Product":
                 title = data.get("name", "")
-                # Price from offers
+                desc_ld = data.get("description", "")
+                if desc_ld:
+                    description = desc_ld
+
                 offers = data.get("offers", {})
                 price = None
                 if isinstance(offers, dict):
@@ -87,7 +97,6 @@ def _parse_vinted(soup: BeautifulSoup, url: str) -> dict | None:
                     if price_str:
                         price = float(str(price_str).replace(",", "."))
                 if price is None:
-                    # Try from page
                     price_el = soup.select_one('[itemprop="price"]')
                     if price_el:
                         price_text = price_el.get("content") or price_el.get_text(strip=True)
@@ -95,11 +104,12 @@ def _parse_vinted(soup: BeautifulSoup, url: str) -> dict | None:
                         if price_match:
                             price = float(price_match.group(1))
                 if title and price:
-                    return {"title": title, "price_eur": price, "platform": "Vinted"}
+                    return {"title": title, "price_eur": price, "platform": "Vinted",
+                            "description": description}
         except (json.JSONDecodeError, ValueError):
             continue
 
-    # Fallback: HTML parsing
+    # Fallback: HTML
     title_el = soup.select_one("h1")
     price_el = soup.select_one('[itemprop="price"]')
     if title_el:
@@ -111,7 +121,8 @@ def _parse_vinted(soup: BeautifulSoup, url: str) -> dict | None:
             if match:
                 price = float(match.group(1))
         if price:
-            return {"title": title, "price_eur": price, "platform": "Vinted"}
+            return {"title": title, "price_eur": price, "platform": "Vinted",
+                    "description": description}
     return None
 
 
@@ -264,8 +275,6 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     product_result = results[0]
-    market_usd = product_result.current_price or 0
-    market_eur = usd_to_eur(market_usd, rates) if market_usd else 0
 
     # Save product
     async with async_session() as session:
@@ -287,45 +296,55 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await session.commit()
             await session.refresh(product)
 
+    # --- DETECT CONDITION from title + description ---
+    listing_text = f"{title} {listing.get('description', '')}"
+    detected_condition = detect_condition(listing_text)
+    cond_emoji = CONDITION_EMOJI.get(detected_condition, "")
+
+    # --- GET CORRECT PRICE FOR THIS CONDITION ---
+    conditions = await pc.get_all_conditions(product_result.external_id)
+    market_usd, condition_used = get_condition_price(conditions, detected_condition)
+    market_usd = market_usd or product_result.current_price or 0
+    market_eur = usd_to_eur(market_usd, rates) if market_usd else 0
+
     # Analysis
     df = await get_or_fetch_prices(product.id)
     analysis = analyze(df) if df is not None and len(df) >= 6 else None
     prediction = predict_prices(df) if df is not None and len(df) >= 10 else None
-
-    # Vinted comparison
-    vinted_listings = await vinted.search_listings(search_query, max_results=10, order="price_low_to_high")
-    vinted_relevant = [l for l in vinted_listings
-                       if vinted._title_matches(l.title, search_query)
-                       and not vinted.is_suspicious(l)]
-    vinted_avg = (sum(l.price_eur for l in vinted_relevant[:5]) / min(5, len(vinted_relevant))
-                  if vinted_relevant else None)
 
     # --- VERDICT ---
     lines = [
         f"🔗 *ANALISI ANNUNCIO*\n",
         f"📦 {title}",
         f"🏪 {platform}: *€{price_eur:.2f}*",
-        f"🔍 Match: {product.name}\n",
+        f"🔍 Match: {product.name}",
+        f"{cond_emoji} Condizione: *{detected_condition}*\n",
     ]
 
-    # Price comparison
+    # Show all condition prices for reference
+    if conditions:
+        lines.append("*Prezzi mercato per condizione:*")
+        for cond_name, cond_prices in conditions.items():
+            if cond_prices and cond_name not in ("Box Only", "Manual Only"):
+                p = cond_prices[-1].price
+                p_eur = usd_to_eur(p, rates)
+                marker = " ← *confronto*" if cond_name == condition_used else ""
+                lines.append(f"  {cond_name}: €{p_eur:.2f}{marker}")
+        lines.append("")
+
+    # Price comparison against CORRECT condition
     if market_eur > 0:
         diff = ((price_eur - market_eur) / market_eur) * 100
         if diff < -20:
-            lines.append(f"✅ *{abs(diff):.0f}% sotto* il mercato (€{market_eur:.2f})")
-        elif diff < 0:
-            lines.append(f"🟢 {abs(diff):.0f}% sotto il mercato (€{market_eur:.2f})")
-        elif diff < 10:
-            lines.append(f"🟡 Al prezzo di mercato circa (€{market_eur:.2f})")
+            lines.append(f"✅ *{abs(diff):.0f}% sotto* il mercato {condition_used} (€{market_eur:.2f})")
+        elif diff < -5:
+            lines.append(f"🟢 {abs(diff):.0f}% sotto mercato {condition_used} (€{market_eur:.2f})")
+        elif diff < 5:
+            lines.append(f"🟡 Al prezzo di mercato {condition_used} (€{market_eur:.2f})")
+        elif diff < 15:
+            lines.append(f"🟠 {diff:.0f}% sopra mercato {condition_used} (€{market_eur:.2f})")
         else:
-            lines.append(f"🔴 *{diff:.0f}% sopra* il mercato (€{market_eur:.2f})")
-
-    if vinted_avg:
-        diff_v = ((price_eur - vinted_avg) / vinted_avg) * 100
-        if diff_v < 0:
-            lines.append(f"✅ {abs(diff_v):.0f}% sotto media Vinted (€{vinted_avg:.2f})")
-        else:
-            lines.append(f"{'🟡' if diff_v < 15 else '🔴'} {diff_v:.0f}% sopra media Vinted (€{vinted_avg:.2f})")
+            lines.append(f"🔴 *{diff:.0f}% sopra* il mercato {condition_used} (€{market_eur:.2f})")
 
     if analysis:
         emoji = SIGNAL_EMOJI.get(analysis.signal, "")
@@ -337,25 +356,28 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         trend_emoji = "📈" if prediction.trend == "bullish" else "📉" if prediction.trend == "bearish" else "➡️"
         lines.append(f"{trend_emoji} Previsione 90gg: {change:+.1f}%")
 
-    # Max offer
-    resale_eur = vinted_avg or market_eur
-    if resale_eur > 0:
+    # Max offer for resale
+    if market_eur > 0:
         target_margin = 0.30
-        # Best case: sell on Subito (no commission)
-        max_offer = resale_eur / (1 + target_margin)
+        max_offer = market_eur / (1 + target_margin)
         aggressive = max_offer * 0.80
 
         lines.append(f"\n🧮 *Offerta consigliata (per 30% margine):*")
         lines.append(f"   Parti da: *€{aggressive:.2f}*")
         lines.append(f"   Max: *€{max_offer:.2f}*")
 
-        if price_eur <= max_offer:
-            lines.append(f"\n✅ *A €{price_eur:.2f} e' un buon affare!*")
-        elif price_eur <= resale_eur:
-            margin_at_price = ((resale_eur - price_eur) / price_eur * 100)
-            lines.append(f"\n🟡 Margine stimato: {margin_at_price:.0f}% (sotto il tuo target 30%)")
+        if price_eur <= aggressive:
+            lines.append(f"\n✅ *AFFARE! A €{price_eur:.2f} hai margine >50%*")
+        elif price_eur <= max_offer:
+            margin = ((market_eur - price_eur) / price_eur * 100)
+            lines.append(f"\n✅ *Buon acquisto!* Margine ~{margin:.0f}%")
+        elif price_eur <= market_eur * 0.95:
+            margin = ((market_eur - price_eur) / price_eur * 100)
+            lines.append(f"\n🟡 Margine {margin:.0f}% — sotto il target 30% ma comunque positivo")
+        elif price_eur <= market_eur * 1.05:
+            lines.append(f"\n🟠 *Prezzo di mercato* — nessun margine di guadagno")
         else:
-            lines.append(f"\n🔴 *A €{price_eur:.2f} non conviene.* Offri max €{max_offer:.2f}")
+            lines.append(f"\n🔴 *Troppo caro.* Offri max €{max_offer:.2f}")
 
     # Links
     buy_links = get_buy_links(product.name, product.category, product.product_url)
