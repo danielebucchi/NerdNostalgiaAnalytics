@@ -21,6 +21,7 @@ from src.bot.handlers.stats import COMMISSIONS
 from src.collectors.ebay import EbayCollector
 from src.collectors.pricecharting import PriceChartingCollector
 from src.collectors.pokemontcg_api import search_card_prices
+from src.collectors.retrogaming import search_retrogamingshop
 from src.collectors.vinted import VintedCollector
 from src.db.database import async_session
 from src.db.models import Product, ProductCategory
@@ -360,7 +361,15 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ebay_avg = ebay_data.get("avg")
         ebay_count = ebay_data.get("count", 0)
 
-    # 4. Vinted
+    # 4. RetroGamingShop.it (for video games)
+    rgs_avg = None
+    if is_videogame:
+        rgs_listings = await search_retrogamingshop(search_query, max_results=5)
+        if rgs_listings:
+            rgs_prices = [l.price_eur for l in rgs_listings]
+            rgs_avg = sum(rgs_prices) / len(rgs_prices)
+
+    # 5. Vinted
     vinted_listings = await vinted.search_listings(search_query, max_results=10, order="price_low_to_high")
     vinted_relevant = [l for l in vinted_listings
                        if vinted._title_matches(l.title, search_query)
@@ -379,6 +388,7 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         vinted_avg_eur=vinted_avg,
         ebay_sold_avg_eur=ebay_avg,
         ebay_sold_count=ebay_count,
+        retrogamingshop_avg_eur=rgs_avg,
         usd_to_eur_rate=eur_rate,
     )
     fair_value = agg.fair_value_eur

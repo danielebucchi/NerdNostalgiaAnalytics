@@ -2,6 +2,7 @@ from urllib.parse import quote_plus
 
 from src.db.models import ProductCategory
 from src.collectors.subito_wallapop import subito_search_url, wallapop_search_url
+from src.collectors.retrogaming import retrogamingshop_search_url, backingame_search_url
 
 CARDMARKET_CATEGORIES = {
     ProductCategory.POKEMON: "Pokemon",
@@ -20,6 +21,11 @@ def get_buy_links(product_name: str, category: str, product_url: str | None = No
     if cm_category:
         cm_url = f"https://www.cardmarket.com/en/{cm_category}/Products/Search?searchString={encoded_name}"
         links.append(f"[Cardmarket]({cm_url})")
+
+    # Retrogaming shops (video games only)
+    if category == ProductCategory.VIDEOGAME:
+        links.append(f"[RetroGamingShop]({retrogamingshop_search_url(product_name)})")
+        links.append(f"[BackInGame]({backingame_search_url(product_name)})")
 
     # Vinted
     vinted_url = f"https://www.vinted.it/catalog?search_text={encoded_name}&order=price_low_to_high"

@@ -33,6 +33,7 @@ def aggregate_prices(
     vinted_min_eur: float | None = None,
     ebay_sold_avg_eur: float | None = None,
     ebay_sold_count: int = 0,
+    retrogamingshop_avg_eur: float | None = None,
     usd_to_eur_rate: float = 0.92,
 ) -> AggregatedPrice:
     """
@@ -89,6 +90,13 @@ def aggregate_prices(
         sources.append(SourcePrice(
             "TCGPlayer (market)", tcg_eur, 3.0,
             f"${tcgplayer_market_usd:.2f} (mercato USA)"
+        ))
+
+    # RetroGamingShop (EU retail — real store prices)
+    if retrogamingshop_avg_eur and retrogamingshop_avg_eur > 0:
+        sources.append(SourcePrice(
+            "RetroGamingShop.it", retrogamingshop_avg_eur, 3.5,
+            "Prezzo negozio retrogaming IT"
         ))
 
     # Vinted (lower weight — asking prices)
