@@ -87,9 +87,20 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Get prices by condition
     conditions = await pc.get_all_conditions(product_result.external_id)
     detected_condition = forced_condition or "Ungraded"  # Default to loose
-    market_usd, condition_used = get_condition_price(conditions, detected_condition)
+    if conditions:
+        market_usd, condition_used = get_condition_price(conditions, detected_condition)
+    else:
+        market_usd = product_result.current_price
+        condition_used = "Ungraded"
     market_usd = market_usd or product_result.current_price or 0
     market_eur = usd_to_eur(market_usd, rates) if market_usd else 0
+
+    # Sanity check
+    if market_eur > offered_eur * 5 and condition_used != "Ungraded":
+        if conditions and "Ungraded" in conditions and conditions["Ungraded"]:
+            market_usd = conditions["Ungraded"][-1].price
+            condition_used = "Ungraded"
+            market_eur = usd_to_eur(market_usd, rates)
 
     # Save to DB
     async with async_session() as session:

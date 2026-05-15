@@ -301,13 +301,40 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- DETECT CONDITION ---
     listing_text = f"{title} {listing.get('description', '')}"
     detected_condition = detect_condition(listing_text)
+
+    # For video games on Vinted/Subito, default to Ungraded (loose) if unknown
+    # Most second-hand game listings are just the cartridge/disc
+    is_videogame = product.category == ProductCategory.VIDEOGAME
+    if detected_condition == "Unknown" and is_videogame:
+        detected_condition = "Ungraded"
+
+    # For cards on Vinted, default to Ungraded if unknown
+    if detected_condition == "Unknown" and platform in ("Vinted", "Subito"):
+        detected_condition = "Ungraded"
+
     cond_emoji = CONDITION_EMOJI.get(detected_condition, "")
 
     # --- COLLECT ALL PRICES ---
     # 1. PriceCharting (by condition)
     conditions = await pc.get_all_conditions(product_result.external_id)
-    pc_usd, condition_used = get_condition_price(conditions, detected_condition)
+    if conditions:
+        pc_usd, condition_used = get_condition_price(conditions, detected_condition)
+    else:
+        # Fallback: search price is typically the loose/used price
+        pc_usd = product_result.current_price
+        condition_used = "Ungraded"
+        logger.warning(f"No condition data for {product_result.external_id}, using search price")
     pc_usd = pc_usd or product_result.current_price or 0
+
+    # Sanity check: if the PriceCharting price is >5x the offered price,
+    # we probably matched the wrong condition. Fall back to Ungraded.
+    eur_rate = 0.92
+    if pc_usd * eur_rate > price_eur * 5 and condition_used != "Ungraded":
+        if "Ungraded" in conditions and conditions["Ungraded"]:
+            old_cond = condition_used
+            pc_usd = conditions["Ungraded"][-1].price
+            condition_used = "Ungraded"
+            logger.info(f"Sanity check: {old_cond} too high, switched to Ungraded")
 
     # 2. Pokemon TCG API (Cardmarket + TCGPlayer) — only for cards
     cm_trend = cm_avg_sell = cm_low = tcg_market = None
