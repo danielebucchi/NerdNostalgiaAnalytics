@@ -26,6 +26,8 @@ def get_buy_links(product_name: str, category: str, product_url: str | None = No
     if category == ProductCategory.VIDEOGAME:
         links.append(f"[RetroGamingShop]({retrogamingshop_search_url(product_name)})")
         links.append(f"[BackInGame]({backingame_search_url(product_name)})")
+        bits26_url = f"https://www.26bits.it/?s={encoded_name}&post_type=product"
+        links.append(f"[26bits]({bits26_url})")
 
     # Vinted
     vinted_url = f"https://www.vinted.it/catalog?search_text={encoded_name}&order=price_low_to_high"
