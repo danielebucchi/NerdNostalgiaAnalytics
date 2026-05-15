@@ -110,12 +110,16 @@ async def vinted_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = " ".join(context.args)
     msg = await update.message.reply_text(f"🔍 Cerco su Vinted '{query}'...")
 
-    listings = await vinted.search_listings(query, max_results=30, order="price_low_to_high")
+    # Use relevance order to avoid wall of €1 accessories, then sort by price
+    listings = await vinted.search_listings(query, max_results=50, order="relevance")
 
-    # Filter: remove suspicious/catalog listings and irrelevant results
+    # Filter: remove suspicious/catalog and irrelevant
     filtered = [l for l in listings
                 if not vinted.is_suspicious(l)
                 and vinted._title_matches(l.title, query)]
+
+    # Sort filtered results by price
+    filtered.sort(key=lambda l: l.price_eur)
 
     if not filtered:
         await msg.edit_text("Nessun risultato rilevante su Vinted.")
