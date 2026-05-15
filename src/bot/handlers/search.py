@@ -7,6 +7,8 @@ from src.bot.keyboards import search_result_keyboard, product_actions_keyboard
 from src.collectors.pricecharting import PriceChartingCollector
 from src.db.database import async_session
 from src.db.models import Product
+from src.utils.buy_links import get_buy_links
+from src.utils.currency import get_exchange_rates, format_price
 
 from sqlalchemy import select
 
@@ -85,18 +87,21 @@ async def select_product_callback(update: Update, context: ContextTypes.DEFAULT_
         await query.edit_message_text("Prodotto non trovato nel database.")
         return
 
-    price_str = f"${product.current_price:.2f}" if product.current_price else "N/D"
+    rates = await get_exchange_rates()
+    price_str = format_price(product.current_price, rates) if product.current_price else "N/D"
     set_str = f"\n📦 Set: {product.set_name}" if product.set_name else ""
-    url_str = f"\n🔗 {product.product_url}" if product.product_url else ""
+    links = get_buy_links(product.name, product.category, product.product_url)
 
     text = (
         f"🎴 *{product.name}*{set_str}\n"
         f"💵 Prezzo: {price_str}\n"
-        f"📂 Categoria: {product.category}{url_str}"
+        f"📂 Categoria: {product.category}\n\n"
+        f"{links}"
     )
 
     await query.edit_message_text(
         text,
         parse_mode="Markdown",
         reply_markup=product_actions_keyboard(product.id),
+        disable_web_page_preview=True,
     )
