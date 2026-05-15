@@ -195,14 +195,42 @@ class VintedCollector(BaseCollector):
 
     @staticmethod
     def is_suspicious(listing: VintedListing, min_price: float = 0.50) -> bool:
-        """Detect potentially fake/misleading listings."""
+        """Detect potentially fake/misleading listings.
+        Catches: scam/trade posts, catalog listings (€1 placeholder),
+        and "don't buy" price-list posts.
+        """
         if listing.price_eur < min_price:
             return True
-        # Check for common scam patterns
-        scam_keywords = ["scambio", "trade", "cerco", "looking for", "échange", "tausch"]
+
         title_lower = listing.title.lower()
+
+        # Scam / trade / wanted posts
+        scam_keywords = ["scambio", "trade", "cerco", "looking for", "échange", "tausch"]
         if any(kw in title_lower for kw in scam_keywords):
             return True
+
+        # Catalog / price list posts ("non comprare", "prezzi in descrizione", etc.)
+        # These are fake listings at €1 where the real prices are in the description
+        catalog_keywords = [
+            "non comprare", "non acquistare", "no acquistare",
+            "prezzi in descrizione", "prezzo in descrizione",
+            "prezzi in bio", "prezzo in bio",
+            "prezzi singoli", "prezzo singolo",
+            "chiedi prezzo", "chiedere prezzo", "chiedimi",
+            "leggi descrizione", "leggere descrizione",
+            "don't buy", "do not buy", "dont buy",
+            "price in description", "prices in description",
+            "prix en description", "prix dans description",
+            "ne pas acheter", "nicht kaufen",
+            "lista", "catalogo", "listino",
+        ]
+        if any(kw in title_lower for kw in catalog_keywords):
+            return True
+
+        # €1 listings are almost always catalog/placeholder posts
+        if listing.price_eur <= 1.0:
+            return True
+
         return False
 
     async def find_deals(

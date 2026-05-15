@@ -50,6 +50,26 @@ class TestSuspiciousDetection:
         listing = VintedListing("Cerco Charizard", 50.0, "", None, "user", None)
         assert VintedCollector.is_suspicious(listing)
 
+    def test_catalog_non_comprare(self):
+        listing = VintedListing("Non comprare prezzi in descrizione", 1.0, "", None, "user", None)
+        assert VintedCollector.is_suspicious(listing)
+
+    def test_catalog_prezzi_in_desc(self):
+        listing = VintedListing("Pokemon carte prezzi in descrizione", 1.0, "", None, "user", None)
+        assert VintedCollector.is_suspicious(listing)
+
+    def test_catalog_lista(self):
+        listing = VintedListing("Lista Pokemon disponibili", 1.0, "", None, "user", None)
+        assert VintedCollector.is_suspicious(listing)
+
+    def test_one_euro_placeholder(self):
+        listing = VintedListing("Charizard EX Gold", 1.0, "", None, "user", None)
+        assert VintedCollector.is_suspicious(listing)
+
+    def test_two_euro_ok(self):
+        listing = VintedListing("Carta Pokemon comune", 2.0, "", None, "user", None)
+        assert not VintedCollector.is_suspicious(listing)
+
     def test_scam_french(self):
         listing = VintedListing("Échange Dracaufeu", 50.0, "", None, "user", None)
         assert VintedCollector.is_suspicious(listing)
