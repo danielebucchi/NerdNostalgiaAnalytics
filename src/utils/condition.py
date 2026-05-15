@@ -14,7 +14,7 @@ LOOSE_KEYWORDS = [
     "cart only", "cartridge only", "loose", "no box", "no case",
     "disc only", "game only", "card only",
     # French
-    "cartouche seule", "sans boite", "sans boîte",
+    "cartouche seule", "sans boite", "sans boîte", "cartouche",
     # German
     "nur modul", "ohne ovp", "lose",
 ]
@@ -34,15 +34,23 @@ CIB_KEYWORDS = [
 
 SEALED_KEYWORDS = [
     # Italian
-    "sigillato", "nuovo", "sealed", "factory sealed", "blister",
+    "sigillato", "factory sealed", "blister",
     "mai aperto", "ancora sigillato", "cellophane",
     # English
-    "sealed", "new", "factory sealed", "mint sealed", "unopened",
+    "sealed", "factory sealed", "mint sealed", "unopened",
     "brand new", "shrink wrap",
     # French
-    "scellé", "neuf sous blister",
+    "scellé", "neuf sous blister", "sous blister",
     # German
-    "versiegelt", "neu", "originalverpackt",
+    "versiegelt", "originalverpackt", "neu ovp",
+]
+
+# These are checked with word boundaries to avoid false positives
+# e.g. "nuovo" should not match "nuovamente", "new" should not match "renewed"
+# Checked with word boundaries to avoid "neuve" matching "neu", etc.
+# Only forms that clearly refer to the product being new/sealed
+SEALED_KEYWORDS_STRICT = [
+    "nuovo di zecca", "come nuovo",
 ]
 
 GRADED_KEYWORDS = [
@@ -57,6 +65,7 @@ def detect_condition(text: str) -> str:
     Detect condition from listing title/description.
     Returns: 'Ungraded', 'Complete in Box', 'New/Sealed', 'Graded (PSA)', or 'Unknown'.
     """
+    import re
     lower = text.lower()
 
     # Check graded first (most specific)
@@ -64,13 +73,17 @@ def detect_condition(text: str) -> str:
         if kw in lower:
             return "Graded (PSA)"
 
-    # Check sealed
+    # Check sealed — exact substring match
     for kw in SEALED_KEYWORDS:
         if kw in lower:
             return "New/Sealed"
 
+    # Check sealed — strict word boundary match (avoids "neuve" matching "neu")
+    for kw in SEALED_KEYWORDS_STRICT:
+        if re.search(r'\b' + re.escape(kw) + r'\b', lower):
+            return "New/Sealed"
+
     # Check LOOSE before CIB — "ohne ovp" / "senza scatola" must override "ovp" / "scatola"
-    # Loose negates completeness, so check it first
     for kw in LOOSE_KEYWORDS:
         if kw in lower:
             return "Ungraded"
