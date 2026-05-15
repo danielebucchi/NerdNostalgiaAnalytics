@@ -115,20 +115,43 @@ def _parse_vinted(soup: BeautifulSoup, url: str) -> dict | None:
         except (json.JSONDecodeError, ValueError):
             continue
 
-    # Fallback: HTML
+    # Fallback: HTML parsing (newer Vinted pages don't have JSON-LD)
     title_el = soup.select_one("h1")
+    if not title_el:
+        return None
+
+    title = title_el.get_text(strip=True)
+    price = None
+
+    # Try itemprop="price"
     price_el = soup.select_one('[itemprop="price"]')
-    if title_el:
-        title = title_el.get_text(strip=True)
-        price = None
-        if price_el:
-            price_text = price_el.get_text(strip=True)
-            match = re.search(r'([\d]+[.,]?\d*)', price_text.replace(".", "").replace(",", "."))
-            if match:
-                price = float(match.group(1))
-        if price:
-            return {"title": title, "price_eur": price, "platform": "Vinted",
-                    "description": description}
+    if price_el:
+        price_text = price_el.get("content") or price_el.get_text(strip=True)
+        match = re.search(r'([\d]+[.,]?\d*)', price_text.replace(".", "").replace(",", "."))
+        if match:
+            price = float(match.group(1))
+
+    # Try class-based price selectors
+    if price is None:
+        for sel in ['[class*="price"]', 'p', 'div', 'span']:
+            for el in soup.select(sel):
+                txt = el.get_text(strip=True)
+                match = re.match(r'^([\d]+[,.][\d]{2})\s*€$', txt)
+                if match:
+                    price = float(match.group(1).replace(".", "").replace(",", "."))
+                    break
+            if price:
+                break
+
+    # Get description from itemprop
+    if not description:
+        desc_el = soup.select_one('[itemprop="description"]')
+        if desc_el:
+            description = desc_el.get_text(strip=True)
+
+    if title and price:
+        return {"title": title, "price_eur": price, "platform": "Vinted",
+                "description": description}
     return None
 
 
