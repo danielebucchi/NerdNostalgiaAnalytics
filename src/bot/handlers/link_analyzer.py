@@ -437,27 +437,48 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Aggregated fair value
     lines.append(format_aggregated_prices(agg))
 
+    # Low confidence warning
+    is_low_confidence = agg.confidence == "low"
+    only_usa_source = len(agg.sources) <= 1 and all("PriceCharting" in s.source or "TCGPlayer" in s.source for s in agg.sources)
+
+    if is_low_confidence and only_usa_source and is_videogame:
+        lines.append(
+            "\n⚠ *ATTENZIONE: prezzo basato solo sul mercato USA.*\n"
+            "I videogiochi PAL/EU hanno spesso prezzi diversi.\n"
+            "Confronta manualmente su RetroGamingShop, eBay.it venduti, Subito.\n"
+        )
+
     # Comparison
     if fair_value > 0:
         diff = ((price_eur - fair_value) / fair_value) * 100
         lines.append("")
-        if diff < -20:
-            lines.append(f"✅ *{abs(diff):.0f}% SOTTO* il valore di mercato!")
-        elif diff < -5:
-            lines.append(f"🟢 {abs(diff):.0f}% sotto il valore di mercato")
-        elif diff < 5:
-            lines.append(f"🟡 Al prezzo di mercato")
-        elif diff < 15:
-            lines.append(f"🟠 {diff:.0f}% sopra il mercato")
+
+        if is_low_confidence and only_usa_source:
+            # Don't give strong buy/sell verdicts with only USA data
+            if diff < -20:
+                lines.append(f"🟡 {abs(diff):.0f}% sotto il mercato USA (potrebbe non riflettere i prezzi EU)")
+            elif diff < 5:
+                lines.append(f"🟡 Circa al prezzo del mercato USA")
+            else:
+                lines.append(f"🟠 {diff:.0f}% sopra il mercato USA")
         else:
-            lines.append(f"🔴 *{diff:.0f}% SOPRA* il mercato")
+            if diff < -20:
+                lines.append(f"✅ *{abs(diff):.0f}% SOTTO* il valore di mercato!")
+            elif diff < -5:
+                lines.append(f"🟢 {abs(diff):.0f}% sotto il valore di mercato")
+            elif diff < 5:
+                lines.append(f"🟡 Al prezzo di mercato")
+            elif diff < 15:
+                lines.append(f"🟠 {diff:.0f}% sopra il mercato")
+            else:
+                lines.append(f"🔴 *{diff:.0f}% SOPRA* il mercato")
 
     if analysis:
         emoji = SIGNAL_EMOJI.get(analysis.signal, "")
         lines.append(f"{emoji} Segnale tecnico: {analysis.signal.value}")
 
-    # Max offer for resale
-    if fair_value > 0:
+    # Max offer for resale — only with sufficient confidence
+    if fair_value > 0 and not (is_low_confidence and only_usa_source):
         target_margin = 0.30
         max_offer = fair_value / (1 + target_margin)
         aggressive = max_offer * 0.80
