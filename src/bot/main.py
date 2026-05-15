@@ -23,7 +23,7 @@ from src.bot.handlers.portfolio import (
 from src.bot.handlers.bulk import watchall_command, alertall_command, unwatchall_command
 from src.bot.handlers.pricealert import pricealert_command
 from src.bot.handlers.market import trending_command, opportunities_command
-from src.bot.handlers.deals import deals_command, vinted_command
+from src.bot.handlers.deals import deals_command, vinted_command, vinted_page_callback
 from src.bot.handlers.advanced import (
     predict_command, grading_command, hype_command,
     correlate_command, compare_command, watchvinted_command, photo_handler,
@@ -376,6 +376,7 @@ def create_bot() -> Application:
     app.add_handler(CallbackQueryHandler(watch_callback, pattern=r"^wat:"))
     app.add_handler(CallbackQueryHandler(unwatch_callback, pattern=r"^uwat:"))
     app.add_handler(CallbackQueryHandler(alert_buy_callback, pattern=r"^abuy:"))
+    app.add_handler(CallbackQueryHandler(vinted_page_callback, pattern=r"^vp:"))
 
     # Cancel callback
     async def cancel_callback(update, context):

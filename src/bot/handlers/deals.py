@@ -108,25 +108,113 @@ async def vinted_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     query = " ".join(context.args)
-    msg = await update.message.reply_text(f"🔍 Cerco su Vinted '{query}'...")
+    page = 1
+    await _vinted_search_page(update.message, query, page, context)
 
-    # Use relevance order to avoid wall of €1 accessories, then sort by price
-    listings = await vinted.search_listings(query, max_results=50, order="relevance")
 
-    # Filter: remove suspicious/catalog and irrelevant
+async def _vinted_search_page(message, query: str, page: int, context):
+    """Fetch and display a page of Vinted results."""
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+    msg = await message.reply_text(f"🔍 Cerco su Vinted '{query}' (pagina {page})...")
+
+    # Fetch more results per page to have enough after filtering
+    per_page = 96
+    listings = await vinted.search_listings(query, max_results=per_page, order="relevance")
+
+    # Filter
     filtered = [l for l in listings
                 if not vinted.is_suspicious(l)
                 and vinted._title_matches(l.title, query)]
-
-    # Sort filtered results by price
     filtered.sort(key=lambda l: l.price_eur)
 
-    if not filtered:
-        await msg.edit_text("Nessun risultato rilevante su Vinted.")
+    # Paginate: show 10 per page
+    page_size = 10
+    start = (page - 1) * page_size
+    page_items = filtered[start:start + page_size]
+
+    if not page_items:
+        if page == 1:
+            await msg.edit_text("Nessun risultato rilevante su Vinted.")
+        else:
+            await msg.edit_text("Nessun altro risultato.")
         return
 
-    lines = [f"🛒 *Vinted: '{query}'* ({len(filtered)} risultati)\n"]
-    for l in filtered[:15]:
+    lines = [f"🛒 *Vinted: '{query}'* (pag. {page}, {len(filtered)} totali)\n"]
+    for l in page_items:
         lines.append(f"€{l.price_eur:.2f} — [{l.title[:50]}]({l.url})")
 
-    await msg.edit_text("\n".join(lines), parse_mode="Markdown", disable_web_page_preview=True)
+    # Store query in context for pagination
+    # Use a short hash to keep callback_data under 64 bytes
+    import hashlib
+    query_hash = hashlib.md5(query.encode()).hexdigest()[:8]
+    context.bot_data[f"vq_{query_hash}"] = query
+
+    # Buttons
+    buttons = []
+    if page > 1:
+        buttons.append(InlineKeyboardButton("⬅ Precedente", callback_data=f"vp:{query_hash}:{page - 1}"))
+    if start + page_size < len(filtered):
+        buttons.append(InlineKeyboardButton("Carica altri ➡", callback_data=f"vp:{query_hash}:{page + 1}"))
+
+    markup = InlineKeyboardMarkup([buttons]) if buttons else None
+
+    await msg.edit_text(
+        "\n".join(lines),
+        parse_mode="Markdown",
+        disable_web_page_preview=True,
+        reply_markup=markup,
+    )
+
+
+async def vinted_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle Vinted pagination button clicks."""
+    query_cb = update.callback_query
+    await query_cb.answer()
+
+    parts = query_cb.data.split(":")
+    query_hash = parts[1]
+    page = int(parts[2])
+
+    query = context.bot_data.get(f"vq_{query_hash}", "")
+    if not query:
+        await query_cb.edit_message_text("Sessione scaduta. Rifai /vinted <nome>.")
+        return
+
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+    await query_cb.edit_message_text(f"🔍 Carico pagina {page}...")
+
+    per_page = 96
+    listings = await vinted.search_listings(query, max_results=per_page, order="relevance")
+    filtered = [l for l in listings
+                if not vinted.is_suspicious(l)
+                and vinted._title_matches(l.title, query)]
+    filtered.sort(key=lambda l: l.price_eur)
+
+    page_size = 10
+    start = (page - 1) * page_size
+    page_items = filtered[start:start + page_size]
+
+    if not page_items:
+        await query_cb.edit_message_text("Nessun altro risultato.")
+        return
+
+    lines = [f"🛒 *Vinted: '{query}'* (pag. {page}, {len(filtered)} totali)\n"]
+    for l in page_items:
+        lines.append(f"€{l.price_eur:.2f} — [{l.title[:50]}]({l.url})")
+
+    buttons = []
+    if page > 1:
+        buttons.append(InlineKeyboardButton("⬅ Precedente", callback_data=f"vp:{query_hash}:{page - 1}"))
+    if start + page_size < len(filtered):
+        buttons.append(InlineKeyboardButton("Carica altri ➡", callback_data=f"vp:{query_hash}:{page + 1}"))
+
+    markup = InlineKeyboardMarkup([buttons]) if buttons else None
+
+    await query_cb.edit_message_text(
+        "\n".join(lines),
+        parse_mode="Markdown",
+        disable_web_page_preview=True,
+        reply_markup=markup,
+    )
