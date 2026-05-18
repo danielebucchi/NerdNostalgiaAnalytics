@@ -39,19 +39,61 @@ scheduler = AsyncIOScheduler()
 
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🎴 *Nerd Nostalgia Lite*\n\n"
-        "Monitora prezzi di carte e videogiochi.\n"
-        "Ti avviso quando scendono sotto la soglia che imposti.\n\n"
-        "/search <nome> — Cerca prodotto\n"
-        "/watch <nome> <prezzo€> — Monitora sotto soglia\n"
-        "/watchlist — La tua lista\n"
-        "/unwatch <nome> — Rimuovi\n",
+        f"Ciao {update.message.from_user.first_name}! 👋\n\n"
+        "🎴 *Nerd Nostalgia Lite*\n"
+        "_Monitora prezzi di carte e videogiochi._\n"
+        "_Ti avviso quando scendono sotto la soglia che imposti._\n\n"
+        "Scrivi /help per la guida completa.",
         parse_mode="Markdown",
     )
 
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await start_cmd(update, context)
+    await update.message.reply_text(
+        "🎴 *Nerd Nostalgia Lite — Guida*\n\n"
+
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🔍 *CERCA*\n\n"
+        "/search <nome>\n"
+        "  Cerca un prodotto su PriceCharting.\n"
+        "  _Es: /search charizard base set_\n"
+        "  _Es: /search pokemon emerald_\n"
+        "  _Es: /search nintendo switch oled_\n\n"
+
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "👁 *MONITORA*\n\n"
+        "/watch <nome> <prezzo soglia $>\n"
+        "  Aggiunge alla watchlist. Ti avviso quando\n"
+        "  il prezzo scende sotto la soglia.\n"
+        "  _Es: /watch charizard base set 300_\n"
+        "  _Es: /watch pokemon emerald 40_\n\n"
+        "  Se il prodotto e' gia' in watchlist,\n"
+        "  aggiorna la soglia.\n\n"
+
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "📋 *GESTISCI*\n\n"
+        "/watchlist\n"
+        "  Mostra la tua lista con:\n"
+        "  🟢 = sotto soglia (compralo!)\n"
+        "  🟡 = vicino alla soglia (<10%)\n"
+        "  ⚪ = sopra soglia (aspetta)\n\n"
+        "/unwatch <nome>\n"
+        "  Rimuove dalla watchlist.\n"
+        "  _Es: /unwatch charizard_\n\n"
+
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🔔 *NOTIFICHE*\n\n"
+        f"  Controllo prezzi ogni *{CHECK_INTERVAL} minuti*.\n"
+        "  Quando un prodotto scende sotto soglia\n"
+        "  ricevi un messaggio automatico.\n"
+        "  Se risale e poi riscende, ti avviso di nuovo.\n\n"
+
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "💡 *Nota: i prezzi sono in $ (dollari USA)*\n"
+        "  PriceCharting usa il mercato americano.\n"
+        "  I prezzi EU possono variare.",
+        parse_mode="Markdown",
+    )
 
 
 async def search_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
