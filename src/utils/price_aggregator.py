@@ -35,6 +35,9 @@ def aggregate_prices(
     ebay_sold_count: int = 0,
     retrogamingshop_avg_eur: float | None = None,
     twentysixbits_avg_eur: float | None = None,
+    cardtrader_nm_min_eur: float | None = None,
+    cardtrader_median_eur: float | None = None,
+    cardtrader_offers: int = 0,
     usd_to_eur_rate: float = 0.92,
 ) -> AggregatedPrice:
     """
@@ -76,6 +79,20 @@ def aggregate_prices(
         sources.append(SourcePrice(
             "Cardmarket (minimo)", cardmarket_low_eur, 1.0,
             "Prezzo minimo disponibile"
+        ))
+
+    # CardTrader (EU real marketplace prices)
+    if cardtrader_median_eur and cardtrader_median_eur > 0:
+        weight = min(5.0, 3.5 + cardtrader_offers * 0.05)
+        sources.append(SourcePrice(
+            "CardTrader (mediana)", cardtrader_median_eur, weight,
+            f"Mediana {cardtrader_offers} offerte EU"
+        ))
+
+    if cardtrader_nm_min_eur and cardtrader_nm_min_eur > 0:
+        sources.append(SourcePrice(
+            "CardTrader (NM minimo)", cardtrader_nm_min_eur, 2.0,
+            "Minimo Near Mint o superiore"
         ))
 
     # USA sources (converted to EUR)

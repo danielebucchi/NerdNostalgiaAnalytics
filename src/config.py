@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     ebay_app_id: str = ""
     ebay_cert_id: str = ""
 
+    # CardTrader API (seller JWT token)
+    cardtrader_token: str = ""
+
     # Scraping settings
     scrape_delay_seconds: float = 2.0
     max_concurrent_requests: int = 3

@@ -18,6 +18,7 @@ from src.analysis.indicators import analyze, Signal, SIGNAL_EMOJI
 from src.analysis.prediction import predict_prices
 from src.bot.handlers.signal import get_or_fetch_prices
 from src.bot.handlers.stats import COMMISSIONS
+from src.collectors.cardtrader import cardtrader
 from src.collectors.ebay import EbayCollector
 from src.collectors.pricecharting import PriceChartingCollector
 from src.collectors.pokemontcg_api import search_card_prices
@@ -368,6 +369,8 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_card = product.category in (
         ProductCategory.POKEMON, ProductCategory.MAGIC, ProductCategory.YUGIOH,
     )
+    ct_median = ct_nm_min = None
+    ct_offers = 0
     if is_card:
         tcg_cards = await search_card_prices(search_query, max_results=1)
         if tcg_cards:
@@ -376,6 +379,23 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cm_avg_sell = tcg_card.cm_avg_sell
             cm_low = tcg_card.cm_low
             tcg_market = tcg_card.tcg_market
+
+        # CardTrader (real EU marketplace)
+        if cardtrader.is_configured:
+            game_name = "pokemon"
+            if product.category == ProductCategory.MAGIC:
+                game_name = "magic"
+            elif product.category == ProductCategory.YUGIOH:
+                game_name = "yugioh"
+            try:
+                ct_data = await cardtrader.get_prices(search_query, game=game_name,
+                                                      set_name=product.set_name)
+                if ct_data:
+                    ct_median = ct_data.median_price_eur
+                    ct_nm_min = ct_data.near_mint_min_eur
+                    ct_offers = ct_data.total_offers
+            except Exception as e:
+                logger.error(f"CardTrader fetch failed: {e}")
 
     # 3. eBay (if API configured)
     ebay_avg = None
@@ -425,6 +445,9 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ebay_sold_count=ebay_count,
         retrogamingshop_avg_eur=rgs_avg,
         twentysixbits_avg_eur=bits26_avg,
+        cardtrader_median_eur=ct_median,
+        cardtrader_nm_min_eur=ct_nm_min,
+        cardtrader_offers=ct_offers,
         usd_to_eur_rate=eur_rate,
     )
     fair_value = agg.fair_value_eur
