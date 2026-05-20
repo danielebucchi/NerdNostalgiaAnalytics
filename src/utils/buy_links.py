@@ -36,6 +36,9 @@ def get_buy_links(product_name: str, category: str, product_url: str | None = No
     if cm_category:
         cm_url = f"https://www.cardmarket.com/en/{cm_category}/Products/Search?category=-1&searchString={encoded_name}&searchMode=v2"
         links.append(f"[Cardmarket]({cm_url})")
+        # CardTrader
+        ct_url = f"https://www.cardtrader.com/it/games/pokemon/categories/pokemon-single-card/blueprints_search?q={encoded_name}"
+        links.append(f"[CardTrader]({ct_url})")
 
     # Retrogaming shops (video games only)
     if category == ProductCategory.VIDEOGAME:
