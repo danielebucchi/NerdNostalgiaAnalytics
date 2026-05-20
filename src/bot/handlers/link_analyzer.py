@@ -377,13 +377,21 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cm_low = tcg_card.cm_low
             tcg_market = tcg_card.tcg_market
 
-    # 3. eBay sold (if API configured)
+    # 3. eBay (if API configured)
     ebay_avg = None
     ebay_count = 0
     if ebay.is_configured:
         ebay_data = await ebay.get_sold_prices(search_query, marketplace="it")
         ebay_avg = ebay_data.get("avg")
         ebay_count = ebay_data.get("count", 0)
+
+        # Sanity: eBay Browse API returns active listings, not sold.
+        # If avg is way above PriceCharting, it's inflated — discard.
+        pc_eur = (pc_usd or 0) * (rates.get("EUR", 0.92) if rates else 0.92)
+        if ebay_avg and pc_eur > 0 and ebay_avg > pc_eur * 3:
+            logger.info(f"eBay avg €{ebay_avg:.0f} too high vs PriceCharting €{pc_eur:.0f}, discarding")
+            ebay_avg = None
+            ebay_count = 0
 
     # 4. Italian retrogaming stores (for video games)
     rgs_avg = None

@@ -215,6 +215,24 @@ class EbayCollector:
         if not prices:
             return {"avg": None, "min": None, "max": None, "count": 0, "items": items}
 
+        # Filter outliers using IQR (interquartile range)
+        prices_sorted = sorted(prices)
+        n = len(prices_sorted)
+        if n >= 4:
+            q1 = prices_sorted[n // 4]
+            q3 = prices_sorted[3 * n // 4]
+            iqr = q3 - q1
+            lower_bound = max(1.0, q1 - 1.5 * iqr)
+            upper_bound = q3 + 1.5 * iqr
+            filtered_prices = [p for p in prices if lower_bound <= p <= upper_bound]
+            if filtered_prices:
+                prices = filtered_prices
+
+        # Extra safety: remove anything below €1 or above €50,000
+        prices = [p for p in prices if 1.0 <= p <= 50000]
+        if not prices:
+            return {"avg": None, "min": None, "max": None, "count": 0, "items": items}
+
         return {
             "avg": round(sum(prices) / len(prices), 2),
             "min": round(min(prices), 2),
