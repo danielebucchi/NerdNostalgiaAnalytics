@@ -95,11 +95,13 @@ class EbayCollector:
     async def search_sold(
         self,
         query: str,
-        max_results: int = 10,
+        max_results: int = 20,
         marketplace: str = "it",
+        condition: str = "USED",
     ) -> list[EbaySoldItem]:
         """
-        Search eBay sold/completed listings.
+        Search eBay listings with realistic price filters.
+        Uses price range + condition + FIXED_PRICE to get market-relevant results.
         Returns empty list if credentials not configured.
         """
         token = await self._get_token()
@@ -107,22 +109,28 @@ class EbayCollector:
             return []
 
         marketplace_id = MARKETPLACES.get(marketplace, "EBAY_IT")
+        currency = "EUR" if marketplace in ("it", "de", "fr", "es") else "GBP" if marketplace == "uk" else "USD"
+
+        # Filter: used items, fixed price, realistic price range (€5-€5000)
+        price_filter = (
+            f"conditions:{{{condition}}},"
+            f"buyingOptions:{{FIXED_PRICE}},"
+            f"price:[5..5000],"
+            f"priceCurrency:{currency}"
+        )
 
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                # The Browse API searches active + completed items
-                # We filter for completed/sold items
                 r = await client.get(
                     BROWSE_URL,
                     headers={
                         "Authorization": f"Bearer {token}",
                         "X-EBAY-C-MARKETPLACE-ID": marketplace_id,
-                        "X-EBAY-C-ENDUSERCTX": "affiliateCampaignId=<ePNCampaignId>,affiliateReferenceId=<referenceId>",
                     },
                     params={
                         "q": query,
-                        "filter": "buyingOptions:{FIXED_PRICE|AUCTION},conditions:{NEW|USED|VERY_GOOD|GOOD|ACCEPTABLE}",
-                        "sort": "-price",
+                        "filter": price_filter,
+                        "sort": "newlyListed",
                         "limit": str(min(max_results, 50)),
                     },
                 )
@@ -207,9 +215,20 @@ class EbayCollector:
         Get aggregated sold prices from eBay.
         Returns {"avg": float, "min": float, "max": float, "count": int, "items": list}.
         """
-        items = await self.search_sold(query, max_results=max_results, marketplace=marketplace)
-        if not items:
+        raw_items = await self.search_sold(query, max_results=max_results, marketplace=marketplace)
+        if not raw_items:
             return {"avg": None, "min": None, "max": None, "count": 0, "items": []}
+
+        # Filter by title relevance — at least the main keyword must appear
+        query_words = query.lower().split()
+        main_keyword = query_words[0] if query_words else ""
+        items = [
+            i for i in raw_items
+            if main_keyword in i.title.lower()
+        ] if main_keyword and len(main_keyword) >= 3 else raw_items
+
+        if not items:
+            items = raw_items  # Fallback if filtering removed everything
 
         prices = [i.price_eur for i in items if i.price_eur > 0]
         if not prices:
@@ -233,8 +252,13 @@ class EbayCollector:
         if not prices:
             return {"avg": None, "min": None, "max": None, "count": 0, "items": items}
 
+        # Use median (more robust than mean for marketplace data)
+        prices_sorted = sorted(prices)
+        n = len(prices_sorted)
+        median = prices_sorted[n // 2] if n % 2 else (prices_sorted[n // 2 - 1] + prices_sorted[n // 2]) / 2
+
         return {
-            "avg": round(sum(prices) / len(prices), 2),
+            "avg": round(median, 2),
             "min": round(min(prices), 2),
             "max": round(max(prices), 2),
             "count": len(prices),
