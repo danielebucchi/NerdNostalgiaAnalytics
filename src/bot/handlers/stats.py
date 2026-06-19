@@ -179,28 +179,67 @@ async def target_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 
 
+def _resolve_db_path() -> str | None:
+    """Extract the SQLite file path from settings.database_url.
+
+    Supports `sqlite+aiosqlite:///./relative.db` and
+    `sqlite+aiosqlite:////app/data/absolute.db` (4 slashes = absolute on Linux).
+    Returns None for non-SQLite URLs.
+    """
+    from src.config import settings
+    url = settings.database_url or ""
+    if "sqlite" not in url:
+        return None
+    # Strip scheme up to "sqlite+aiosqlite:///"
+    marker = "sqlite+aiosqlite:///"
+    if marker in url:
+        path = url.split(marker, 1)[1]
+        # An extra leading slash means an absolute Unix path
+        if path.startswith("/"):
+            return path
+        return path  # relative — assume cwd
+    return None
+
+
 async def backup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/backup — admin-only. Sends the live SQLite database file as an
+    attachment. Reads `database_url` from settings so it works both in
+    container (volume-mounted path) and local development.
     """
-    /backup - Invia il database come file.
-    """
-    db_path = "nerd_nostalgia.db"
-    if not os.path.exists(db_path):
-        await update.message.reply_text("Database non trovato.")
+    # Admin gate. The user middleware stashes the User in context.user_data;
+    # fall back to a DB lookup if it isn't there for some reason.
+    user = context.user_data.get("user") if context.user_data else None
+    if user is None or not getattr(user, "is_admin", False):
+        await update.message.reply_text("🚫 Comando riservato agli admin.")
+        return
+
+    db_path = _resolve_db_path()
+    if not db_path or not os.path.exists(db_path):
+        await update.message.reply_text(
+            f"Database non trovato (path: `{db_path}`).", parse_mode="Markdown",
+        )
         return
 
     try:
-        # Copy to temp file to avoid locking issues
-        backup_path = f"/tmp/nerd_nostalgia_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+        # Copy to a temp file to avoid taking a lock on the live DB during upload.
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = f"/tmp/nerd_nostalgia_backup_{ts}.db"
         shutil.copy2(db_path, backup_path)
 
+        size_mb = os.path.getsize(backup_path) / (1024 * 1024)
         with open(backup_path, "rb") as f:
             await update.message.reply_document(
                 document=f,
                 filename=f"nerd_nostalgia_{datetime.now().strftime('%Y%m%d')}.db",
-                caption=f"💾 Backup database - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+                caption=(
+                    f"💾 *Backup database*\n"
+                    f"📅 {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
+                    f"📦 {size_mb:.1f} MB"
+                ),
+                parse_mode="Markdown",
             )
 
         os.remove(backup_path)
     except Exception as e:
         logger.error(f"Backup failed: {e}")
-        await update.message.reply_text(f"Errore backup: {e}")
+        await update.message.reply_text(f"⚠ Errore backup: {e}")

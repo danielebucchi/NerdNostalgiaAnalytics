@@ -889,3 +889,181 @@ async def enrich_hype_with_sentiment(
         score=adjusted, raw_score=raw_score, sentiment=sentiment,
         summary=summary, description=_label_for_score(adjusted),
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Listing fraud / scam risk analysis.
+#
+# Rule-based `is_suspicious()` catches obvious cases (trade/scambio posts,
+# catalog €1 placeholders). The LLM catches the harder ones: too-good-to-be-
+# true prices, fake or stock photos hinted in the description, suspicious
+# seller language ("contact me on WhatsApp", "no Vinted protection"), etc.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@dataclass
+class FraudAnalysis:
+    """LLM-extracted risk reading for a marketplace listing."""
+    risk: float = 0.0           # 0.0 (safe) … 1.0 (high risk)
+    flagged: bool = False        # True when risk >= flag_threshold
+    reasons: list[str] | None = None
+    summary: str = ""
+
+    @property
+    def display_summary(self) -> str:
+        if not self.flagged:
+            return ""
+        return self.summary or "Listing sospetto"
+
+
+_FRAUD_FEW_SHOT = [
+    (
+        {"title": "Charizard base set holo NM",
+         "description": "Carta in ottimo stato, spedizione tracciata.",
+         "price_eur": 250, "market_eur": 280},
+        {"risk": 0.05, "reasons": [], "summary": "Listing in linea col mercato"},
+    ),
+    (
+        {"title": "Charizard base set holo PSA 10",
+         "description": "vendo carta originale, contattatemi su WhatsApp 333...",
+         "price_eur": 50, "market_eur": 2500},
+        {"risk": 0.95,
+         "reasons": ["prezzo 50x sotto mercato", "contatto fuori piattaforma"],
+         "summary": "Prezzo irrealisticamente basso e contatti privati"},
+    ),
+    (
+        {"title": "Pokemon Charizard rara",
+         "description": "Foto presa da internet, in possesso di amico, non rispondo a domande",
+         "price_eur": 80, "market_eur": 120},
+        {"risk": 0.75,
+         "reasons": ["foto stock", "venditore evasivo"],
+         "summary": "Foto non originali, comportamento sospetto"},
+    ),
+    (
+        {"title": "Lotto carte pokemon vintage",
+         "description": "Carte degli anni '90, foto reali, scrivetemi per dettagli.",
+         "price_eur": 60, "market_eur": 0},
+        {"risk": 0.1, "reasons": [], "summary": "Lotto vintage senza red flag"},
+    ),
+    (
+        {"title": "Charizard ex SV3.5 151 ITA",
+         "description": "Nuova fiammante, foto reale del prodotto.",
+         "price_eur": 8, "market_eur": 35},
+        {"risk": 0.45,
+         "reasons": ["prezzo sensibilmente sotto mercato (8 vs 35)"],
+         "summary": "Sotto mercato ma plausibile per vendita rapida"},
+    ),
+]
+
+
+@lru_cache(maxsize=1)
+def _build_fraud_system_prompt() -> str:
+    examples_str = "\n\n".join(
+        f"Listing: {json.dumps(inp, ensure_ascii=False)}\n"
+        f"Output: {json.dumps(out, ensure_ascii=False)}"
+        for inp, out in _FRAUD_FEW_SHOT
+    )
+    return f"""You assess fraud / scam risk for a marketplace listing (Vinted, Subito, eBay).
+
+Inputs: title, description, price_eur, market_eur (estimated fair value, may be 0 if unknown).
+
+You MUST respond with a single JSON object using EXACTLY these keys: risk, reasons, summary. Do not add other keys, prose, or explanation.
+
+Rules:
+1. **risk**: float in [0.0, 1.0]. 0.0 = looks legitimate, 0.5 = caution, 1.0 = almost certainly a scam.
+2. **reasons**: array of short Italian strings (max 5) describing each red flag. Empty array when no red flags.
+3. **summary**: a short (≤100 char) Italian one-liner summarizing the verdict.
+
+Red flags to weigh (higher risk for more flags / stronger signals):
+- Price wildly below market (>5x discount with no plausible reason)
+- Contact via external channels (WhatsApp, Instagram, Telegram phone numbers) → bypasses platform protection
+- Seller refuses questions / is evasive / doesn't respond
+- Description mentions stock photos, "foto presa da internet", "foto generica"
+- "Lotto" or "stock" of high-value items sold at a single low price
+- Pressure to pay outside the platform (PayPal Friends & Family, bank transfer)
+- Listing claims "ultime ore", "ultimo pezzo" combined with low price
+- Cross-language gibberish, copy-paste-style descriptions
+
+Not red flags (do NOT penalize):
+- Legitimate discounts for quick sale (up to ~30% below market)
+- Generic platform shipping terms
+- Sellers offering to ship via tracked mail
+- Lotto listings without other suspicious signals (those are handled separately by bundle detection)
+
+Examples:
+
+{examples_str}
+"""
+
+
+def _sanitize_fraud(payload: dict) -> dict:
+    out: dict[str, Any] = dict(payload)
+    try:
+        risk = float(out.get("risk", 0.0))
+    except (TypeError, ValueError):
+        risk = 0.0
+    out["risk"] = max(0.0, min(1.0, risk))
+    reasons = out.get("reasons") or []
+    if not isinstance(reasons, list):
+        reasons = []
+    reasons = [str(r).strip() for r in reasons if isinstance(r, (str, int)) and str(r).strip()][:5]
+    out["reasons"] = reasons
+    out["summary"] = str(out.get("summary") or "").strip()
+    return out
+
+
+async def llm_analyze_fraud_risk(
+    title: str, description: str, price_eur: float, market_eur: float = 0.0,
+    *, flag_threshold: float = 0.5,
+) -> FraudAnalysis | None:
+    """Call Groq to assess fraud risk. Returns None on config / API failure.
+
+    `flag_threshold`: minimum risk for the analysis to be flagged as suspicious
+    in the UI. Below the threshold, `flagged` stays False even if reasons exist.
+    """
+    if not is_configured():
+        return None
+    if not (title or "").strip():
+        return None
+
+    payload_in = {
+        "title": (title or "").strip(),
+        "description": (description or "").strip()[:600],
+        "price_eur": round(float(price_eur), 2),
+        "market_eur": round(float(market_eur or 0), 2),
+    }
+    cache_input = json.dumps(payload_in, sort_keys=True, ensure_ascii=False)
+
+    async def _do_call() -> FraudAnalysis | None:
+        client = _get_client()
+        try:
+            response = await client.chat.completions.create(
+                model=_MODEL,
+                messages=[
+                    {"role": "system", "content": _build_fraud_system_prompt()},
+                    {"role": "user", "content": json.dumps(payload_in, ensure_ascii=False)},
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.0,
+                max_tokens=384,
+            )
+        except GroqError as e:
+            logger.warning(f"Groq fraud detector failed: {e}")
+            return None
+        if not response.choices:
+            return None
+        raw = response.choices[0].message.content or ""
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            logger.warning(f"Groq returned unparseable fraud JSON: {e}; raw={raw[:200]!r}")
+            return None
+        clean = _sanitize_fraud(data)
+        return FraudAnalysis(
+            risk=clean["risk"],
+            flagged=clean["risk"] >= flag_threshold,
+            reasons=clean["reasons"] or None,
+            summary=clean["summary"],
+        )
+
+    return await _cached_call("fraud", cache_input, _do_call)

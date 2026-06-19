@@ -40,6 +40,7 @@ from src.utils.condition import (
 from src.utils.llm_parser import (
     detect_bundle,
     detect_videogame_condition_with_llm_fallback,
+    llm_analyze_fraud_risk,
 )
 from src.utils.query_parser import parse_card_query
 from src.utils.search_match import best_match_with_confidence, confidence_emoji
@@ -555,6 +556,21 @@ async def _finish_link(
     df = await get_or_fetch_prices(product.id)
     analysis = analyze(df) if df is not None and len(df) >= 6 else None
 
+    # Fraud risk — only meaningful for second-hand sites where scams are common.
+    # PriceCharting isn't a marketplace, skip. Cardmarket has its own protection.
+    fraud_analysis = None
+    if platform in ("Vinted", "Subito", "Wallapop", "eBay"):
+        # We don't have fair_value yet (computed below), so pass the matched
+        # product's market price as a rough proxy.
+        rough_market = pc_usd * eur_rate if pc_usd else 0.0
+        description = listing.get("description", "") or ""
+        try:
+            fraud_analysis = await llm_analyze_fraud_risk(
+                title, description, price_eur, market_eur=rough_market,
+            )
+        except Exception as e:
+            logger.warning(f"Fraud detector failed: {e}")
+
     # --- VERDICT ---
     match_em = confidence_emoji(match_confidence)
     lines = [
@@ -566,6 +582,18 @@ async def _finish_link(
     ]
     if match_confidence < 0.35:
         lines.insert(4, "⚠ _Match incerto — il prodotto sopra potrebbe non corrispondere all'annuncio._")
+
+    # Fraud risk warning — show right under the header so the user sees it
+    # before the price analysis.
+    if fraud_analysis and fraud_analysis.flagged:
+        risk_pct = int(fraud_analysis.risk * 100)
+        lines.append(
+            f"🚨 *RISCHIO TRUFFA {risk_pct}%* — {fraud_analysis.summary}"
+        )
+        if fraud_analysis.reasons:
+            for r in fraud_analysis.reasons[:3]:
+                lines.append(f"  ⚠ {r}")
+        lines.append("")  # blank line separator
 
     # Bundle/lot warning — the per-item comparisons below are unreliable.
     if bundle.is_bundle:

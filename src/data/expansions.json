@@ -6,145 +6,2239 @@
       "Each entry has: code (Pokemon TCG API code where known), game, series, name_en (canonical), name_it (best-effort; falls back to name_en for untranslated modern sets), release_date (ISO), total_cards (null when unknown), aliases (alternative names users might type).",
       "Italian names follow Pokemon Italia official translations where available. For sets that were never officially translated (e.g., most XY/SM/SWSH special sets), name_it equals name_en — the fuzzy matcher in expansion_match.py handles partial matches in either language.",
       "Codes prefixed with `me*` for Mega Evolution era are local slugs; once official TCG API codes are published, update them here."
-    ]
+    ],
+    "last_synced_from_api": "pokemontcg.io",
+    "last_synced_count": 173
   },
   "expansions": [
-    {"code": "basep",     "game": "pokemon", "series": "Original",            "name_en": "Wizards Black Star Promos",      "name_it": "Wizards Black Star Promo",       "release_date": "1999-07-01", "total_cards": 53,  "aliases": ["wbsp", "wizards promo", "wizards promos", "wizards black star promo", "black star promo", "black star promos", "wotc promo", "wotc promos", "wizard of the coast promo", "wizard of the coast promos", "wizard promo", "wizards of the coast promo", "promo wizards", "promo wotc", "promo nero"]},
-    {"code": "base1",     "game": "pokemon", "series": "Original",            "name_en": "Base Set",                       "name_it": "Set Base",                       "release_date": "1999-01-09", "total_cards": 102, "aliases": ["base", "first set", "set base", "1999"]},
-    {"code": "base2",     "game": "pokemon", "series": "Original",            "name_en": "Jungle",                         "name_it": "Giungla",                        "release_date": "1999-06-16", "total_cards": 64,  "aliases": ["giungla"]},
-    {"code": "base3",     "game": "pokemon", "series": "Original",            "name_en": "Fossil",                         "name_it": "Fossile",                        "release_date": "1999-10-10", "total_cards": 62,  "aliases": ["fossil", "fossile", "fossili"]},
-    {"code": "base4",     "game": "pokemon", "series": "Original",            "name_en": "Base Set 2",                     "name_it": "Set Base 2",                     "release_date": "2000-02-24", "total_cards": 130, "aliases": ["base 2", "set base 2"]},
-    {"code": "base5",     "game": "pokemon", "series": "Original",            "name_en": "Team Rocket",                    "name_it": "Team Rocket",                    "release_date": "2000-04-24", "total_cards": 82,  "aliases": ["team rocket"]},
-    {"code": "gym1",      "game": "pokemon", "series": "Original",            "name_en": "Gym Heroes",                     "name_it": "Eroi della Palestra",            "release_date": "2000-08-14", "total_cards": 132, "aliases": ["gym heroes", "eroi palestra"]},
-    {"code": "gym2",      "game": "pokemon", "series": "Original",            "name_en": "Gym Challenge",                  "name_it": "Sfida della Palestra",           "release_date": "2000-10-16", "total_cards": 132, "aliases": ["gym challenge", "sfida palestra"]},
-    {"code": "neo1",      "game": "pokemon", "series": "Original",            "name_en": "Neo Genesis",                    "name_it": "Neo Genesis",                    "release_date": "2000-12-16", "total_cards": 111, "aliases": ["neo genesis"]},
-    {"code": "neo2",      "game": "pokemon", "series": "Original",            "name_en": "Neo Discovery",                  "name_it": "Neo Discovery",                  "release_date": "2001-06-01", "total_cards": 75,  "aliases": ["neo discovery"]},
-    {"code": "neo3",      "game": "pokemon", "series": "Original",            "name_en": "Neo Revelation",                 "name_it": "Neo Revelation",                 "release_date": "2001-09-21", "total_cards": 64,  "aliases": ["neo revelation"]},
-    {"code": "neo4",      "game": "pokemon", "series": "Original",            "name_en": "Neo Destiny",                    "name_it": "Neo Destiny",                    "release_date": "2002-02-28", "total_cards": 113, "aliases": ["neo destiny"]},
-    {"code": "base6",     "game": "pokemon", "series": "Original",            "name_en": "Legendary Collection",           "name_it": "Collezione Leggendaria",         "release_date": "2002-05-24", "total_cards": 110, "aliases": ["legendary collection", "collezione leggendaria"]},
-    {"code": "ecard1",    "game": "pokemon", "series": "e-Card",              "name_en": "Expedition Base Set",            "name_it": "Expedition",                     "release_date": "2002-09-15", "total_cards": 165, "aliases": ["expedition", "spedizione"]},
-    {"code": "ecard2",    "game": "pokemon", "series": "e-Card",              "name_en": "Aquapolis",                      "name_it": "Aquapolis",                      "release_date": "2003-01-15", "total_cards": 186, "aliases": ["aquapolis"]},
-    {"code": "ecard3",    "game": "pokemon", "series": "e-Card",              "name_en": "Skyridge",                       "name_it": "Skyridge",                       "release_date": "2003-05-12", "total_cards": 182, "aliases": ["skyridge", "cresta del cielo"]},
-
-    {"code": "ex1",       "game": "pokemon", "series": "EX",                  "name_en": "EX Ruby & Sapphire",             "name_it": "EX Rubino e Zaffiro",            "release_date": "2003-07-01", "total_cards": 109, "aliases": ["ex ruby sapphire", "ex rubino zaffiro", "rubino e zaffiro", "ex rs"]},
-    {"code": "ex2",       "game": "pokemon", "series": "EX",                  "name_en": "EX Sandstorm",                   "name_it": "EX Tempesta di Sabbia",          "release_date": "2003-09-17", "total_cards": 100, "aliases": ["ex sandstorm", "tempesta di sabbia"]},
-    {"code": "ex3",       "game": "pokemon", "series": "EX",                  "name_en": "EX Dragon",                      "name_it": "EX Dragon",                      "release_date": "2003-11-24", "total_cards": 100, "aliases": ["ex dragon", "ex drago"]},
-    {"code": "ex4",       "game": "pokemon", "series": "EX",                  "name_en": "EX Team Magma vs Team Aqua",     "name_it": "EX Team Magma vs Team Aqua",     "release_date": "2004-03-15", "total_cards": 97,  "aliases": ["ex team magma vs team aqua", "magma aqua"]},
-    {"code": "ex5",       "game": "pokemon", "series": "EX",                  "name_en": "EX Hidden Legends",              "name_it": "EX Leggende Nascoste",           "release_date": "2004-06-14", "total_cards": 102, "aliases": ["ex hidden legends", "leggende nascoste"]},
-    {"code": "ex6",       "game": "pokemon", "series": "EX",                  "name_en": "EX FireRed & LeafGreen",         "name_it": "EX Rosso Fuoco e Verde Foglia",  "release_date": "2004-08-30", "total_cards": 116, "aliases": ["ex firered leafgreen", "rosso fuoco verde foglia", "ex frlg"]},
-    {"code": "ex7",       "game": "pokemon", "series": "EX",                  "name_en": "EX Team Rocket Returns",         "name_it": "EX Il Ritorno del Team Rocket",  "release_date": "2004-11-08", "total_cards": 111, "aliases": ["ex team rocket returns", "ritorno team rocket"]},
-    {"code": "ex8",       "game": "pokemon", "series": "EX",                  "name_en": "EX Deoxys",                      "name_it": "EX Deoxys",                      "release_date": "2005-02-14", "total_cards": 108, "aliases": ["ex deoxys"]},
-    {"code": "ex9",       "game": "pokemon", "series": "EX",                  "name_en": "EX Emerald",                     "name_it": "EX Smeraldo",                    "release_date": "2005-05-09", "total_cards": 107, "aliases": ["ex emerald", "ex smeraldo"]},
-    {"code": "ex10",      "game": "pokemon", "series": "EX",                  "name_en": "EX Unseen Forces",               "name_it": "EX Forze Segrete",               "release_date": "2005-08-22", "total_cards": 145, "aliases": ["ex unseen forces", "forze segrete"]},
-    {"code": "ex11",      "game": "pokemon", "series": "EX",                  "name_en": "EX Delta Species",               "name_it": "EX Specie Delta",                "release_date": "2005-10-31", "total_cards": 114, "aliases": ["ex delta species", "specie delta"]},
-    {"code": "ex12",      "game": "pokemon", "series": "EX",                  "name_en": "EX Legend Maker",                "name_it": "EX Creatore di Leggende",        "release_date": "2006-02-13", "total_cards": 92,  "aliases": ["ex legend maker", "creatore di leggende"]},
-    {"code": "ex13",      "game": "pokemon", "series": "EX",                  "name_en": "EX Holon Phantoms",              "name_it": "EX Fantasmi di Holon",           "release_date": "2006-05-03", "total_cards": 111, "aliases": ["ex holon phantoms", "fantasmi di holon"]},
-    {"code": "ex14",      "game": "pokemon", "series": "EX",                  "name_en": "EX Crystal Guardians",           "name_it": "EX Guardiani di Cristallo",      "release_date": "2006-08-30", "total_cards": 100, "aliases": ["ex crystal guardians", "guardiani di cristallo"]},
-    {"code": "ex15",      "game": "pokemon", "series": "EX",                  "name_en": "EX Dragon Frontiers",            "name_it": "EX Frontiere dei Draghi",        "release_date": "2006-11-08", "total_cards": 101, "aliases": ["ex dragon frontiers", "frontiere dei draghi"]},
-    {"code": "ex16",      "game": "pokemon", "series": "EX",                  "name_en": "EX Power Keepers",               "name_it": "EX Custodi del Potere",          "release_date": "2007-02-14", "total_cards": 108, "aliases": ["ex power keepers", "custodi del potere"]},
-
-    {"code": "dp1",       "game": "pokemon", "series": "Diamond & Pearl",     "name_en": "Diamond & Pearl",                "name_it": "Diamante e Perla",               "release_date": "2007-05-23", "total_cards": 130, "aliases": ["diamond pearl", "diamante e perla", "dp base"]},
-    {"code": "dp2",       "game": "pokemon", "series": "Diamond & Pearl",     "name_en": "Mysterious Treasures",           "name_it": "Tesori Misteriosi",              "release_date": "2007-08-22", "total_cards": 124, "aliases": ["mysterious treasures", "tesori misteriosi"]},
-    {"code": "dp3",       "game": "pokemon", "series": "Diamond & Pearl",     "name_en": "Secret Wonders",                 "name_it": "Meraviglie Segrete",             "release_date": "2007-11-07", "total_cards": 132, "aliases": ["secret wonders", "meraviglie segrete"]},
-    {"code": "dp4",       "game": "pokemon", "series": "Diamond & Pearl",     "name_en": "Great Encounters",               "name_it": "Grandi Incontri",                "release_date": "2008-02-13", "total_cards": 106, "aliases": ["great encounters", "grandi incontri"]},
-    {"code": "dp5",       "game": "pokemon", "series": "Diamond & Pearl",     "name_en": "Majestic Dawn",                  "name_it": "Alba Maestosa",                  "release_date": "2008-05-21", "total_cards": 100, "aliases": ["majestic dawn", "alba maestosa"]},
-    {"code": "dp6",       "game": "pokemon", "series": "Diamond & Pearl",     "name_en": "Legends Awakened",               "name_it": "Risveglio delle Leggende",       "release_date": "2008-08-20", "total_cards": 146, "aliases": ["legends awakened", "risveglio delle leggende"]},
-    {"code": "dp7",       "game": "pokemon", "series": "Diamond & Pearl",     "name_en": "Stormfront",                     "name_it": "Stormfront",                     "release_date": "2008-11-05", "total_cards": 100, "aliases": ["stormfront"]},
-
-    {"code": "pl1",       "game": "pokemon", "series": "Platinum",            "name_en": "Platinum",                       "name_it": "Platino",                        "release_date": "2009-02-11", "total_cards": 127, "aliases": ["platinum", "platino"]},
-    {"code": "pl2",       "game": "pokemon", "series": "Platinum",            "name_en": "Rising Rivals",                  "name_it": "Rivali in Rivolta",              "release_date": "2009-05-16", "total_cards": 111, "aliases": ["rising rivals", "rivali"]},
-    {"code": "pl3",       "game": "pokemon", "series": "Platinum",            "name_en": "Supreme Victors",                "name_it": "Vincitori Supremi",              "release_date": "2009-08-19", "total_cards": 147, "aliases": ["supreme victors", "vincitori supremi"]},
-    {"code": "pl4",       "game": "pokemon", "series": "Platinum",            "name_en": "Arceus",                         "name_it": "Arceus",                         "release_date": "2009-11-04", "total_cards": 99,  "aliases": ["arceus"]},
-
-    {"code": "hgss1",     "game": "pokemon", "series": "HeartGold & SoulSilver", "name_en": "HeartGold & SoulSilver",      "name_it": "HeartGold e SoulSilver",         "release_date": "2010-02-10", "total_cards": 123, "aliases": ["heartgold soulsilver", "hgss base"]},
-    {"code": "hgss2",     "game": "pokemon", "series": "HeartGold & SoulSilver", "name_en": "Unleashed",                   "name_it": "Scatenati",                      "release_date": "2010-05-12", "total_cards": 95,  "aliases": ["unleashed", "scatenati"]},
-    {"code": "hgss3",     "game": "pokemon", "series": "HeartGold & SoulSilver", "name_en": "Undaunted",                   "name_it": "Indomabili",                     "release_date": "2010-08-18", "total_cards": 90,  "aliases": ["undaunted", "indomabili"]},
-    {"code": "hgss4",     "game": "pokemon", "series": "HeartGold & SoulSilver", "name_en": "Triumphant",                  "name_it": "Trionfanti",                     "release_date": "2010-11-03", "total_cards": 102, "aliases": ["triumphant", "trionfanti"]},
-    {"code": "col1",      "game": "pokemon", "series": "HeartGold & SoulSilver", "name_en": "Call of Legends",             "name_it": "Richiamo delle Leggende",        "release_date": "2011-02-09", "total_cards": 95,  "aliases": ["call of legends", "richiamo delle leggende"]},
-
-    {"code": "bw1",       "game": "pokemon", "series": "Black & White",       "name_en": "Black & White",                  "name_it": "Nero e Bianco",                  "release_date": "2011-04-25", "total_cards": 114, "aliases": ["black white", "nero bianco", "bw base"]},
-    {"code": "bw2",       "game": "pokemon", "series": "Black & White",       "name_en": "Emerging Powers",                "name_it": "Poteri Emergenti",               "release_date": "2011-08-31", "total_cards": 98,  "aliases": ["emerging powers", "poteri emergenti"]},
-    {"code": "bw3",       "game": "pokemon", "series": "Black & White",       "name_en": "Noble Victories",                "name_it": "Nobili Vittorie",                "release_date": "2011-11-16", "total_cards": 101, "aliases": ["noble victories", "nobili vittorie"]},
-    {"code": "bw4",       "game": "pokemon", "series": "Black & White",       "name_en": "Next Destinies",                 "name_it": "Nuove Forze",                    "release_date": "2012-02-08", "total_cards": 99,  "aliases": ["next destinies", "nuove forze"]},
-    {"code": "bw5",       "game": "pokemon", "series": "Black & White",       "name_en": "Dark Explorers",                 "name_it": "Esploratori Oscuri",             "release_date": "2012-05-09", "total_cards": 108, "aliases": ["dark explorers", "esploratori oscuri"]},
-    {"code": "bw6",       "game": "pokemon", "series": "Black & White",       "name_en": "Dragons Exalted",                "name_it": "Draghi Esaltati",                "release_date": "2012-08-15", "total_cards": 124, "aliases": ["dragons exalted", "draghi esaltati"]},
-    {"code": "bw7",       "game": "pokemon", "series": "Black & White",       "name_en": "Boundaries Crossed",             "name_it": "Confini Varcati",                "release_date": "2012-11-07", "total_cards": 149, "aliases": ["boundaries crossed", "confini varcati"]},
-    {"code": "bw8",       "game": "pokemon", "series": "Black & White",       "name_en": "Plasma Storm",                   "name_it": "Tempesta Plasma",                "release_date": "2013-02-06", "total_cards": 135, "aliases": ["plasma storm", "tempesta plasma"]},
-    {"code": "bw9",       "game": "pokemon", "series": "Black & White",       "name_en": "Plasma Freeze",                  "name_it": "Gelo Plasma",                    "release_date": "2013-05-08", "total_cards": 116, "aliases": ["plasma freeze", "gelo plasma"]},
-    {"code": "bw10",      "game": "pokemon", "series": "Black & White",       "name_en": "Plasma Blast",                   "name_it": "Esplosione Plasma",              "release_date": "2013-08-14", "total_cards": 101, "aliases": ["plasma blast", "esplosione plasma"]},
-    {"code": "bw11",      "game": "pokemon", "series": "Black & White",       "name_en": "Legendary Treasures",            "name_it": "Tesori Leggendari",              "release_date": "2013-11-06", "total_cards": 113, "aliases": ["legendary treasures", "tesori leggendari"]},
-
-    {"code": "xy0",       "game": "pokemon", "series": "XY",                  "name_en": "Kalos Starter Set",              "name_it": "Kalos Starter Set",              "release_date": "2013-11-08", "total_cards": 39,  "aliases": ["kalos starter", "starter kalos"]},
-    {"code": "xy1",       "game": "pokemon", "series": "XY",                  "name_en": "XY",                             "name_it": "XY",                             "release_date": "2014-02-05", "total_cards": 146, "aliases": ["xy", "xy base"]},
-    {"code": "xy2",       "game": "pokemon", "series": "XY",                  "name_en": "Flashfire",                      "name_it": "Scintille",                      "release_date": "2014-05-07", "total_cards": 106, "aliases": ["flashfire", "scintille"]},
-    {"code": "xy3",       "game": "pokemon", "series": "XY",                  "name_en": "Furious Fists",                  "name_it": "Pugni Furenti",                  "release_date": "2014-08-13", "total_cards": 111, "aliases": ["furious fists", "pugni furenti"]},
-    {"code": "xy4",       "game": "pokemon", "series": "XY",                  "name_en": "Phantom Forces",                 "name_it": "Forze Fantasma",                 "release_date": "2014-11-05", "total_cards": 119, "aliases": ["phantom forces", "forze fantasma"]},
-    {"code": "xy5",       "game": "pokemon", "series": "XY",                  "name_en": "Primal Clash",                   "name_it": "Scontro Primigenio",             "release_date": "2015-02-04", "total_cards": 160, "aliases": ["primal clash", "scontro primigenio"]},
-    {"code": "xy6",       "game": "pokemon", "series": "XY",                  "name_en": "Roaring Skies",                  "name_it": "Cieli Tonanti",                  "release_date": "2015-05-06", "total_cards": 108, "aliases": ["roaring skies", "cieli tonanti"]},
-    {"code": "xy7",       "game": "pokemon", "series": "XY",                  "name_en": "Ancient Origins",                "name_it": "Antiche Origini",                "release_date": "2015-08-12", "total_cards": 98,  "aliases": ["ancient origins", "antiche origini"]},
-    {"code": "xy8",       "game": "pokemon", "series": "XY",                  "name_en": "BREAKthrough",                   "name_it": "Turbo Rottura",                  "release_date": "2015-11-04", "total_cards": 162, "aliases": ["breakthrough", "turbo rottura"]},
-    {"code": "xy9",       "game": "pokemon", "series": "XY",                  "name_en": "BREAKpoint",                     "name_it": "Turbo Confronto",                "release_date": "2016-02-03", "total_cards": 122, "aliases": ["breakpoint", "turbo confronto"]},
-    {"code": "g1",        "game": "pokemon", "series": "XY",                  "name_en": "Generations",                    "name_it": "Generations",                    "release_date": "2016-02-22", "total_cards": 83,  "aliases": ["generations"], "is_special": true},
-    {"code": "xy10",      "game": "pokemon", "series": "XY",                  "name_en": "Fates Collide",                  "name_it": "Destini Incrociati",             "release_date": "2016-05-02", "total_cards": 124, "aliases": ["fates collide", "destini incrociati"]},
-    {"code": "xy11",      "game": "pokemon", "series": "XY",                  "name_en": "Steam Siege",                    "name_it": "Vapore Confluente",              "release_date": "2016-08-03", "total_cards": 114, "aliases": ["steam siege", "vapore confluente"]},
-    {"code": "xy12",      "game": "pokemon", "series": "XY",                  "name_en": "Evolutions",                     "name_it": "Evoluzioni",                     "release_date": "2016-11-02", "total_cards": 108, "aliases": ["evolutions", "evoluzioni"]},
-
-    {"code": "sm1",       "game": "pokemon", "series": "Sun & Moon",          "name_en": "Sun & Moon",                     "name_it": "Sole e Luna",                    "release_date": "2017-02-03", "total_cards": 149, "aliases": ["sun moon", "sole luna", "sm base"]},
-    {"code": "sm2",       "game": "pokemon", "series": "Sun & Moon",          "name_en": "Guardians Rising",               "name_it": "Guardiani Nascenti",             "release_date": "2017-05-05", "total_cards": 145, "aliases": ["guardians rising", "guardiani nascenti"]},
-    {"code": "sm3",       "game": "pokemon", "series": "Sun & Moon",          "name_en": "Burning Shadows",                "name_it": "Ombre Infuocate",                "release_date": "2017-08-04", "total_cards": 147, "aliases": ["burning shadows", "ombre infuocate"]},
-    {"code": "sm35",      "game": "pokemon", "series": "Sun & Moon",          "name_en": "Shining Legends",                "name_it": "Leggende Iridescenti",           "release_date": "2017-10-06", "total_cards": 73,  "aliases": ["shining legends", "leggende iridescenti"], "is_special": true},
-    {"code": "sm4",       "game": "pokemon", "series": "Sun & Moon",          "name_en": "Crimson Invasion",               "name_it": "Invasione Scarlatta",            "release_date": "2017-11-03", "total_cards": 111, "aliases": ["crimson invasion", "invasione scarlatta"]},
-    {"code": "sm5",       "game": "pokemon", "series": "Sun & Moon",          "name_en": "Ultra Prism",                    "name_it": "Ultraprisma",                    "release_date": "2018-02-02", "total_cards": 156, "aliases": ["ultra prism", "ultraprisma"]},
-    {"code": "sm6",       "game": "pokemon", "series": "Sun & Moon",          "name_en": "Forbidden Light",                "name_it": "Luce Proibita",                  "release_date": "2018-05-04", "total_cards": 131, "aliases": ["forbidden light", "luce proibita"]},
-    {"code": "sm7",       "game": "pokemon", "series": "Sun & Moon",          "name_en": "Celestial Storm",                "name_it": "Tempesta Astrale",               "release_date": "2018-08-03", "total_cards": 168, "aliases": ["celestial storm", "tempesta astrale"]},
-    {"code": "sm75",      "game": "pokemon", "series": "Sun & Moon",          "name_en": "Dragon Majesty",                 "name_it": "Maestà dei Draghi",              "release_date": "2018-09-07", "total_cards": 70,  "aliases": ["dragon majesty", "maestà dei draghi"], "is_special": true},
-    {"code": "sm8",       "game": "pokemon", "series": "Sun & Moon",          "name_en": "Lost Thunder",                   "name_it": "Tuoni Perduti",                  "release_date": "2018-11-02", "total_cards": 214, "aliases": ["lost thunder", "tuoni perduti"]},
-    {"code": "sm9",       "game": "pokemon", "series": "Sun & Moon",          "name_en": "Team Up",                        "name_it": "Gioco di Squadra",               "release_date": "2019-02-01", "total_cards": 181, "aliases": ["team up", "gioco di squadra"]},
-    {"code": "det1",      "game": "pokemon", "series": "Sun & Moon",          "name_en": "Detective Pikachu",              "name_it": "Detective Pikachu",              "release_date": "2019-04-05", "total_cards": 18,  "aliases": ["detective pikachu"], "is_special": true},
-    {"code": "sm10",      "game": "pokemon", "series": "Sun & Moon",          "name_en": "Unbroken Bonds",                 "name_it": "Legami Inossidabili",            "release_date": "2019-05-03", "total_cards": 214, "aliases": ["unbroken bonds", "legami inossidabili"]},
-    {"code": "sm11",      "game": "pokemon", "series": "Sun & Moon",          "name_en": "Unified Minds",                  "name_it": "Menti Unificate",                "release_date": "2019-08-02", "total_cards": 236, "aliases": ["unified minds", "menti unificate"]},
-    {"code": "sm115",     "game": "pokemon", "series": "Sun & Moon",          "name_en": "Hidden Fates",                   "name_it": "Destini Occulti",                "release_date": "2019-08-23", "total_cards": 68,  "aliases": ["hidden fates", "destini occulti"], "is_special": true},
-    {"code": "sm12",      "game": "pokemon", "series": "Sun & Moon",          "name_en": "Cosmic Eclipse",                 "name_it": "Eclissi Cosmica",                "release_date": "2019-11-01", "total_cards": 236, "aliases": ["cosmic eclipse", "eclissi cosmica"]},
-
-    {"code": "swsh1",     "game": "pokemon", "series": "Sword & Shield",      "name_en": "Sword & Shield",                 "name_it": "Spada e Scudo",                  "release_date": "2020-02-07", "total_cards": 202, "aliases": ["sword shield", "spada scudo", "swsh base"]},
-    {"code": "swsh2",     "game": "pokemon", "series": "Sword & Shield",      "name_en": "Rebel Clash",                    "name_it": "Sfida dei Ribelli",              "release_date": "2020-05-01", "total_cards": 192, "aliases": ["rebel clash", "sfida dei ribelli"]},
-    {"code": "swsh3",     "game": "pokemon", "series": "Sword & Shield",      "name_en": "Darkness Ablaze",                "name_it": "Oscurità Inferocita",            "release_date": "2020-08-14", "total_cards": 189, "aliases": ["darkness ablaze", "oscurità inferocita"]},
-    {"code": "swsh35",    "game": "pokemon", "series": "Sword & Shield",      "name_en": "Champion's Path",                "name_it": "Sentiero del Campione",          "release_date": "2020-09-25", "total_cards": 73,  "aliases": ["champion's path", "champions path", "sentiero del campione"], "is_special": true},
-    {"code": "swsh4",     "game": "pokemon", "series": "Sword & Shield",      "name_en": "Vivid Voltage",                  "name_it": "Voltaggio Sfolgorante",          "release_date": "2020-11-13", "total_cards": 185, "aliases": ["vivid voltage", "voltaggio sfolgorante"]},
-    {"code": "swsh45",    "game": "pokemon", "series": "Sword & Shield",      "name_en": "Shining Fates",                  "name_it": "Destini Splendenti",             "release_date": "2021-02-19", "total_cards": 195, "aliases": ["shining fates", "destini splendenti"], "is_special": true},
-    {"code": "swsh5",     "game": "pokemon", "series": "Sword & Shield",      "name_en": "Battle Styles",                  "name_it": "Stili di Lotta",                 "release_date": "2021-03-19", "total_cards": 163, "aliases": ["battle styles", "stili di lotta"]},
-    {"code": "swsh6",     "game": "pokemon", "series": "Sword & Shield",      "name_en": "Chilling Reign",                 "name_it": "Regno Glaciale",                 "release_date": "2021-06-18", "total_cards": 198, "aliases": ["chilling reign", "regno glaciale"]},
-    {"code": "swsh7",     "game": "pokemon", "series": "Sword & Shield",      "name_en": "Evolving Skies",                 "name_it": "Cieli Mutevoli",                 "release_date": "2021-08-27", "total_cards": 203, "aliases": ["evolving skies", "cieli mutevoli"]},
-    {"code": "cel25",     "game": "pokemon", "series": "Sword & Shield",      "name_en": "Celebrations",                   "name_it": "Celebrazioni",                   "release_date": "2021-10-08", "total_cards": 25,  "aliases": ["celebrations", "celebrazioni", "25th anniversary"], "is_special": true},
-    {"code": "swsh8",     "game": "pokemon", "series": "Sword & Shield",      "name_en": "Fusion Strike",                  "name_it": "Colpo Fusione",                  "release_date": "2021-11-12", "total_cards": 264, "aliases": ["fusion strike", "colpo fusione"]},
-    {"code": "swsh9",     "game": "pokemon", "series": "Sword & Shield",      "name_en": "Brilliant Stars",                "name_it": "Stelle Radiose",                 "release_date": "2022-02-25", "total_cards": 172, "aliases": ["brilliant stars", "stelle radiose"]},
-    {"code": "swsh10",    "game": "pokemon", "series": "Sword & Shield",      "name_en": "Astral Radiance",                "name_it": "Splendore Astrale",              "release_date": "2022-05-27", "total_cards": 189, "aliases": ["astral radiance", "splendore astrale"]},
-    {"code": "pgo",       "game": "pokemon", "series": "Sword & Shield",      "name_en": "Pokémon GO",                     "name_it": "Pokémon GO",                     "release_date": "2022-07-01", "total_cards": 78,  "aliases": ["pokemon go", "pgo"], "is_special": true},
-    {"code": "swsh11",    "game": "pokemon", "series": "Sword & Shield",      "name_en": "Lost Origin",                    "name_it": "Origine Perduta",                "release_date": "2022-09-09", "total_cards": 196, "aliases": ["lost origin", "origine perduta"]},
-    {"code": "swsh12",    "game": "pokemon", "series": "Sword & Shield",      "name_en": "Silver Tempest",                 "name_it": "Tempesta Argentata",             "release_date": "2022-11-11", "total_cards": 195, "aliases": ["silver tempest", "tempesta argentata"]},
-    {"code": "swsh12pt5", "game": "pokemon", "series": "Sword & Shield",      "name_en": "Crown Zenith",                   "name_it": "Zenit Regale",                   "release_date": "2023-01-20", "total_cards": 159, "aliases": ["crown zenith", "zenit regale"], "is_special": true},
-
-    {"code": "sv1",       "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Scarlet & Violet",               "name_it": "Scarlatto e Violetto",           "release_date": "2023-03-31", "total_cards": 198, "aliases": ["scarlet violet", "scarlatto violetto", "sv base"]},
-    {"code": "sv2",       "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Paldea Evolved",                 "name_it": "Evoluzioni a Paldea",            "release_date": "2023-06-09", "total_cards": 193, "aliases": ["paldea evolved", "evoluzioni a paldea"]},
-    {"code": "sv3",       "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Obsidian Flames",                "name_it": "Fiamme Obsidiane",               "release_date": "2023-08-11", "total_cards": 197, "aliases": ["obsidian flames", "fiamme obsidiane"]},
-    {"code": "sv3pt5",    "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "151",                            "name_it": "151",                            "release_date": "2023-09-22", "total_cards": 165, "aliases": ["151", "scarlet violet 151"], "is_special": true},
-    {"code": "sv4",       "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Paradox Rift",                   "name_it": "Frattura Paradossale",           "release_date": "2023-11-03", "total_cards": 182, "aliases": ["paradox rift", "frattura paradossale"]},
-    {"code": "sv4pt5",    "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Paldean Fates",                  "name_it": "Destini di Paldea",              "release_date": "2024-01-26", "total_cards": 91,  "aliases": ["paldean fates", "destini di paldea"], "is_special": true},
-    {"code": "sv5",       "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Temporal Forces",                "name_it": "Forze Temporali",                "release_date": "2024-03-22", "total_cards": 162, "aliases": ["temporal forces", "forze temporali"]},
-    {"code": "sv6",       "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Twilight Masquerade",            "name_it": "Maschera del Crepuscolo",        "release_date": "2024-05-24", "total_cards": 167, "aliases": ["twilight masquerade", "maschera del crepuscolo"]},
-    {"code": "sv6pt5",    "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Shrouded Fable",                 "name_it": "Favola Avvolta nel Mistero",     "release_date": "2024-08-02", "total_cards": 99,  "aliases": ["shrouded fable", "favola avvolta nel mistero"], "is_special": true},
-    {"code": "sv7",       "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Stellar Crown",                  "name_it": "Corona Stellare",                "release_date": "2024-09-13", "total_cards": 142, "aliases": ["stellar crown", "corona stellare"]},
-    {"code": "sv8",       "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Surging Sparks",                 "name_it": "Scintille Folgoranti",           "release_date": "2024-11-08", "total_cards": 191, "aliases": ["surging sparks", "scintille folgoranti"]},
-    {"code": "sv8pt5",    "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Prismatic Evolutions",           "name_it": "Evoluzioni Prismatiche",         "release_date": "2025-01-17", "total_cards": 131, "aliases": ["prismatic evolutions", "evoluzioni prismatiche"], "is_special": true},
-    {"code": "sv9",       "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Journey Together",               "name_it": "Viaggio Insieme",                "release_date": "2025-03-28", "total_cards": 159, "aliases": ["journey together", "viaggio insieme"]},
-    {"code": "sv10",      "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Destined Rivals",                "name_it": "Rivali Designati",               "release_date": "2025-05-30", "total_cards": null, "aliases": ["destined rivals", "rivali designati"]},
-    {"code": "blk",       "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "Black Bolt",                     "name_it": "Black Bolt",                     "release_date": "2025-07-18", "total_cards": null, "aliases": ["black bolt"], "is_special": true},
-    {"code": "wht",       "game": "pokemon", "series": "Scarlet & Violet",    "name_en": "White Flare",                    "name_it": "White Flare",                    "release_date": "2025-07-18", "total_cards": null, "aliases": ["white flare"], "is_special": true},
-
-    {"code": "me01",      "game": "pokemon", "series": "Mega Evolution",      "name_en": "Mega Evolution",                 "name_it": "Mega Evoluzione",                "release_date": "2025-09-26", "total_cards": null, "aliases": ["mega evolution", "mega evoluzione", "me base"]},
-    {"code": "me02",      "game": "pokemon", "series": "Mega Evolution",      "name_en": "Phantasmal Flames",              "name_it": "Phantasmal Flames",              "release_date": "2025-11-14", "total_cards": null, "aliases": ["phantasmal flames", "fiamme spettrali"]},
-    {"code": "me03",      "game": "pokemon", "series": "Mega Evolution",      "name_en": "Ascended Heroes",                "name_it": "Ascended Heroes",                "release_date": "2026-01-30", "total_cards": null, "aliases": ["ascended heroes"]},
-    {"code": "me04",      "game": "pokemon", "series": "Mega Evolution",      "name_en": "Perfect Order",                  "name_it": "Perfect Order",                  "release_date": "2026-03-27", "total_cards": null, "aliases": ["perfect order"]},
-    {"code": "me05",      "game": "pokemon", "series": "Mega Evolution",      "name_en": "Chaos Rising",                   "name_it": "Chaos Rising",                   "release_date": "2026-05-22", "total_cards": null, "aliases": ["chaos rising"]}
+    {
+      "code": "basep",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Wizards Black Star Promos",
+      "name_it": "Wizards Black Star Promo",
+      "release_date": "1999-07-01",
+      "total_cards": 53,
+      "aliases": [
+        "wbsp",
+        "wizards promo",
+        "wizards promos",
+        "wizards black star promo",
+        "black star promo",
+        "black star promos",
+        "wotc promo",
+        "wotc promos",
+        "wizard of the coast promo",
+        "wizard of the coast promos",
+        "wizard promo",
+        "wizards of the coast promo",
+        "promo wizards",
+        "promo wotc",
+        "promo nero"
+      ]
+    },
+    {
+      "code": "base1",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Base Set",
+      "name_it": "Set Base",
+      "release_date": "1999-01-09",
+      "total_cards": 102,
+      "aliases": [
+        "base",
+        "first set",
+        "set base",
+        "1999"
+      ]
+    },
+    {
+      "code": "base2",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Jungle",
+      "name_it": "Giungla",
+      "release_date": "1999-06-16",
+      "total_cards": 64,
+      "aliases": [
+        "giungla"
+      ]
+    },
+    {
+      "code": "base3",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Fossil",
+      "name_it": "Fossile",
+      "release_date": "1999-10-10",
+      "total_cards": 62,
+      "aliases": [
+        "fossil",
+        "fossile",
+        "fossili"
+      ]
+    },
+    {
+      "code": "base4",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Base Set 2",
+      "name_it": "Set Base 2",
+      "release_date": "2000-02-24",
+      "total_cards": 130,
+      "aliases": [
+        "base 2",
+        "set base 2"
+      ]
+    },
+    {
+      "code": "base5",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Team Rocket",
+      "name_it": "Team Rocket",
+      "release_date": "2000-04-24",
+      "total_cards": 82,
+      "aliases": [
+        "team rocket"
+      ]
+    },
+    {
+      "code": "gym1",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Gym Heroes",
+      "name_it": "Eroi della Palestra",
+      "release_date": "2000-08-14",
+      "total_cards": 132,
+      "aliases": [
+        "gym heroes",
+        "eroi palestra"
+      ]
+    },
+    {
+      "code": "gym2",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Gym Challenge",
+      "name_it": "Sfida della Palestra",
+      "release_date": "2000-10-16",
+      "total_cards": 132,
+      "aliases": [
+        "gym challenge",
+        "sfida palestra"
+      ]
+    },
+    {
+      "code": "neo1",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Neo Genesis",
+      "name_it": "Neo Genesis",
+      "release_date": "2000-12-16",
+      "total_cards": 111,
+      "aliases": [
+        "neo genesis"
+      ]
+    },
+    {
+      "code": "neo2",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Neo Discovery",
+      "name_it": "Neo Discovery",
+      "release_date": "2001-06-01",
+      "total_cards": 75,
+      "aliases": [
+        "neo discovery"
+      ]
+    },
+    {
+      "code": "neo3",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Neo Revelation",
+      "name_it": "Neo Revelation",
+      "release_date": "2001-09-21",
+      "total_cards": 64,
+      "aliases": [
+        "neo revelation"
+      ]
+    },
+    {
+      "code": "neo4",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Neo Destiny",
+      "name_it": "Neo Destiny",
+      "release_date": "2002-02-28",
+      "total_cards": 113,
+      "aliases": [
+        "neo destiny"
+      ]
+    },
+    {
+      "code": "base6",
+      "game": "pokemon",
+      "series": "Original",
+      "name_en": "Legendary Collection",
+      "name_it": "Collezione Leggendaria",
+      "release_date": "2002-05-24",
+      "total_cards": 110,
+      "aliases": [
+        "legendary collection",
+        "collezione leggendaria"
+      ]
+    },
+    {
+      "code": "ecard1",
+      "game": "pokemon",
+      "series": "e-Card",
+      "name_en": "Expedition Base Set",
+      "name_it": "Expedition",
+      "release_date": "2002-09-15",
+      "total_cards": 165,
+      "aliases": [
+        "expedition",
+        "spedizione"
+      ]
+    },
+    {
+      "code": "ecard2",
+      "game": "pokemon",
+      "series": "e-Card",
+      "name_en": "Aquapolis",
+      "name_it": "Aquapolis",
+      "release_date": "2003-01-15",
+      "total_cards": 186,
+      "aliases": [
+        "aquapolis"
+      ]
+    },
+    {
+      "code": "ecard3",
+      "game": "pokemon",
+      "series": "e-Card",
+      "name_en": "Skyridge",
+      "name_it": "Skyridge",
+      "release_date": "2003-05-12",
+      "total_cards": 182,
+      "aliases": [
+        "skyridge",
+        "cresta del cielo"
+      ]
+    },
+    {
+      "code": "ex1",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Ruby & Sapphire",
+      "name_it": "EX Rubino e Zaffiro",
+      "release_date": "2003-07-01",
+      "total_cards": 109,
+      "aliases": [
+        "ex ruby sapphire",
+        "ex rubino zaffiro",
+        "rubino e zaffiro",
+        "ex rs"
+      ]
+    },
+    {
+      "code": "ex2",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Sandstorm",
+      "name_it": "EX Tempesta di Sabbia",
+      "release_date": "2003-09-17",
+      "total_cards": 100,
+      "aliases": [
+        "ex sandstorm",
+        "tempesta di sabbia"
+      ]
+    },
+    {
+      "code": "ex3",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Dragon",
+      "name_it": "EX Dragon",
+      "release_date": "2003-11-24",
+      "total_cards": 100,
+      "aliases": [
+        "ex dragon",
+        "ex drago"
+      ]
+    },
+    {
+      "code": "ex4",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Team Magma vs Team Aqua",
+      "name_it": "EX Team Magma vs Team Aqua",
+      "release_date": "2004-03-15",
+      "total_cards": 97,
+      "aliases": [
+        "ex team magma vs team aqua",
+        "magma aqua"
+      ]
+    },
+    {
+      "code": "ex5",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Hidden Legends",
+      "name_it": "EX Leggende Nascoste",
+      "release_date": "2004-06-14",
+      "total_cards": 102,
+      "aliases": [
+        "ex hidden legends",
+        "leggende nascoste"
+      ]
+    },
+    {
+      "code": "ex6",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX FireRed & LeafGreen",
+      "name_it": "EX Rosso Fuoco e Verde Foglia",
+      "release_date": "2004-08-30",
+      "total_cards": 116,
+      "aliases": [
+        "ex firered leafgreen",
+        "rosso fuoco verde foglia",
+        "ex frlg"
+      ]
+    },
+    {
+      "code": "ex7",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Team Rocket Returns",
+      "name_it": "EX Il Ritorno del Team Rocket",
+      "release_date": "2004-11-08",
+      "total_cards": 111,
+      "aliases": [
+        "ex team rocket returns",
+        "ritorno team rocket"
+      ]
+    },
+    {
+      "code": "ex8",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Deoxys",
+      "name_it": "EX Deoxys",
+      "release_date": "2005-02-14",
+      "total_cards": 108,
+      "aliases": [
+        "ex deoxys"
+      ]
+    },
+    {
+      "code": "ex9",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Emerald",
+      "name_it": "EX Smeraldo",
+      "release_date": "2005-05-09",
+      "total_cards": 107,
+      "aliases": [
+        "ex emerald",
+        "ex smeraldo"
+      ]
+    },
+    {
+      "code": "ex10",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Unseen Forces",
+      "name_it": "EX Forze Segrete",
+      "release_date": "2005-08-22",
+      "total_cards": 145,
+      "aliases": [
+        "ex unseen forces",
+        "forze segrete"
+      ]
+    },
+    {
+      "code": "ex11",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Delta Species",
+      "name_it": "EX Specie Delta",
+      "release_date": "2005-10-31",
+      "total_cards": 114,
+      "aliases": [
+        "ex delta species",
+        "specie delta"
+      ]
+    },
+    {
+      "code": "ex12",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Legend Maker",
+      "name_it": "EX Creatore di Leggende",
+      "release_date": "2006-02-13",
+      "total_cards": 92,
+      "aliases": [
+        "ex legend maker",
+        "creatore di leggende"
+      ]
+    },
+    {
+      "code": "ex13",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Holon Phantoms",
+      "name_it": "EX Fantasmi di Holon",
+      "release_date": "2006-05-03",
+      "total_cards": 111,
+      "aliases": [
+        "ex holon phantoms",
+        "fantasmi di holon"
+      ]
+    },
+    {
+      "code": "ex14",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Crystal Guardians",
+      "name_it": "EX Guardiani di Cristallo",
+      "release_date": "2006-08-30",
+      "total_cards": 100,
+      "aliases": [
+        "ex crystal guardians",
+        "guardiani di cristallo"
+      ]
+    },
+    {
+      "code": "ex15",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Dragon Frontiers",
+      "name_it": "EX Frontiere dei Draghi",
+      "release_date": "2006-11-08",
+      "total_cards": 101,
+      "aliases": [
+        "ex dragon frontiers",
+        "frontiere dei draghi"
+      ]
+    },
+    {
+      "code": "ex16",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Power Keepers",
+      "name_it": "EX Custodi del Potere",
+      "release_date": "2007-02-14",
+      "total_cards": 108,
+      "aliases": [
+        "ex power keepers",
+        "custodi del potere"
+      ]
+    },
+    {
+      "code": "dp1",
+      "game": "pokemon",
+      "series": "Diamond & Pearl",
+      "name_en": "Diamond & Pearl",
+      "name_it": "Diamante e Perla",
+      "release_date": "2007-05-23",
+      "total_cards": 130,
+      "aliases": [
+        "diamond pearl",
+        "diamante e perla",
+        "dp base"
+      ]
+    },
+    {
+      "code": "dp2",
+      "game": "pokemon",
+      "series": "Diamond & Pearl",
+      "name_en": "Mysterious Treasures",
+      "name_it": "Tesori Misteriosi",
+      "release_date": "2007-08-22",
+      "total_cards": 124,
+      "aliases": [
+        "mysterious treasures",
+        "tesori misteriosi"
+      ]
+    },
+    {
+      "code": "dp3",
+      "game": "pokemon",
+      "series": "Diamond & Pearl",
+      "name_en": "Secret Wonders",
+      "name_it": "Meraviglie Segrete",
+      "release_date": "2007-11-07",
+      "total_cards": 132,
+      "aliases": [
+        "secret wonders",
+        "meraviglie segrete"
+      ]
+    },
+    {
+      "code": "dp4",
+      "game": "pokemon",
+      "series": "Diamond & Pearl",
+      "name_en": "Great Encounters",
+      "name_it": "Grandi Incontri",
+      "release_date": "2008-02-13",
+      "total_cards": 106,
+      "aliases": [
+        "great encounters",
+        "grandi incontri"
+      ]
+    },
+    {
+      "code": "dp5",
+      "game": "pokemon",
+      "series": "Diamond & Pearl",
+      "name_en": "Majestic Dawn",
+      "name_it": "Alba Maestosa",
+      "release_date": "2008-05-21",
+      "total_cards": 100,
+      "aliases": [
+        "majestic dawn",
+        "alba maestosa"
+      ]
+    },
+    {
+      "code": "dp6",
+      "game": "pokemon",
+      "series": "Diamond & Pearl",
+      "name_en": "Legends Awakened",
+      "name_it": "Risveglio delle Leggende",
+      "release_date": "2008-08-20",
+      "total_cards": 146,
+      "aliases": [
+        "legends awakened",
+        "risveglio delle leggende"
+      ]
+    },
+    {
+      "code": "dp7",
+      "game": "pokemon",
+      "series": "Diamond & Pearl",
+      "name_en": "Stormfront",
+      "name_it": "Stormfront",
+      "release_date": "2008-11-05",
+      "total_cards": 100,
+      "aliases": [
+        "stormfront"
+      ]
+    },
+    {
+      "code": "pl1",
+      "game": "pokemon",
+      "series": "Platinum",
+      "name_en": "Platinum",
+      "name_it": "Platino",
+      "release_date": "2009-02-11",
+      "total_cards": 127,
+      "aliases": [
+        "platinum",
+        "platino"
+      ]
+    },
+    {
+      "code": "pl2",
+      "game": "pokemon",
+      "series": "Platinum",
+      "name_en": "Rising Rivals",
+      "name_it": "Rivali in Rivolta",
+      "release_date": "2009-05-16",
+      "total_cards": 111,
+      "aliases": [
+        "rising rivals",
+        "rivali"
+      ]
+    },
+    {
+      "code": "pl3",
+      "game": "pokemon",
+      "series": "Platinum",
+      "name_en": "Supreme Victors",
+      "name_it": "Vincitori Supremi",
+      "release_date": "2009-08-19",
+      "total_cards": 147,
+      "aliases": [
+        "supreme victors",
+        "vincitori supremi"
+      ]
+    },
+    {
+      "code": "pl4",
+      "game": "pokemon",
+      "series": "Platinum",
+      "name_en": "Arceus",
+      "name_it": "Arceus",
+      "release_date": "2009-11-04",
+      "total_cards": 99,
+      "aliases": [
+        "arceus"
+      ]
+    },
+    {
+      "code": "hgss1",
+      "game": "pokemon",
+      "series": "HeartGold & SoulSilver",
+      "name_en": "HeartGold & SoulSilver",
+      "name_it": "HeartGold e SoulSilver",
+      "release_date": "2010-02-10",
+      "total_cards": 123,
+      "aliases": [
+        "heartgold soulsilver",
+        "hgss base"
+      ]
+    },
+    {
+      "code": "hgss2",
+      "game": "pokemon",
+      "series": "HeartGold & SoulSilver",
+      "name_en": "Unleashed",
+      "name_it": "Scatenati",
+      "release_date": "2010-05-12",
+      "total_cards": 95,
+      "aliases": [
+        "unleashed",
+        "scatenati"
+      ]
+    },
+    {
+      "code": "hgss3",
+      "game": "pokemon",
+      "series": "HeartGold & SoulSilver",
+      "name_en": "Undaunted",
+      "name_it": "Indomabili",
+      "release_date": "2010-08-18",
+      "total_cards": 90,
+      "aliases": [
+        "undaunted",
+        "indomabili"
+      ]
+    },
+    {
+      "code": "hgss4",
+      "game": "pokemon",
+      "series": "HeartGold & SoulSilver",
+      "name_en": "Triumphant",
+      "name_it": "Trionfanti",
+      "release_date": "2010-11-03",
+      "total_cards": 102,
+      "aliases": [
+        "triumphant",
+        "trionfanti"
+      ]
+    },
+    {
+      "code": "col1",
+      "game": "pokemon",
+      "series": "HeartGold & SoulSilver",
+      "name_en": "Call of Legends",
+      "name_it": "Richiamo delle Leggende",
+      "release_date": "2011-02-09",
+      "total_cards": 95,
+      "aliases": [
+        "call of legends",
+        "richiamo delle leggende"
+      ]
+    },
+    {
+      "code": "bw1",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "Black & White",
+      "name_it": "Nero e Bianco",
+      "release_date": "2011-04-25",
+      "total_cards": 114,
+      "aliases": [
+        "black white",
+        "nero bianco",
+        "bw base"
+      ]
+    },
+    {
+      "code": "bw2",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "Emerging Powers",
+      "name_it": "Poteri Emergenti",
+      "release_date": "2011-08-31",
+      "total_cards": 98,
+      "aliases": [
+        "emerging powers",
+        "poteri emergenti"
+      ]
+    },
+    {
+      "code": "bw3",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "Noble Victories",
+      "name_it": "Nobili Vittorie",
+      "release_date": "2011-11-16",
+      "total_cards": 101,
+      "aliases": [
+        "noble victories",
+        "nobili vittorie"
+      ]
+    },
+    {
+      "code": "bw4",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "Next Destinies",
+      "name_it": "Nuove Forze",
+      "release_date": "2012-02-08",
+      "total_cards": 99,
+      "aliases": [
+        "next destinies",
+        "nuove forze"
+      ]
+    },
+    {
+      "code": "bw5",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "Dark Explorers",
+      "name_it": "Esploratori Oscuri",
+      "release_date": "2012-05-09",
+      "total_cards": 108,
+      "aliases": [
+        "dark explorers",
+        "esploratori oscuri"
+      ]
+    },
+    {
+      "code": "bw6",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "Dragons Exalted",
+      "name_it": "Draghi Esaltati",
+      "release_date": "2012-08-15",
+      "total_cards": 124,
+      "aliases": [
+        "dragons exalted",
+        "draghi esaltati"
+      ]
+    },
+    {
+      "code": "bw7",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "Boundaries Crossed",
+      "name_it": "Confini Varcati",
+      "release_date": "2012-11-07",
+      "total_cards": 149,
+      "aliases": [
+        "boundaries crossed",
+        "confini varcati"
+      ]
+    },
+    {
+      "code": "bw8",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "Plasma Storm",
+      "name_it": "Tempesta Plasma",
+      "release_date": "2013-02-06",
+      "total_cards": 135,
+      "aliases": [
+        "plasma storm",
+        "tempesta plasma"
+      ]
+    },
+    {
+      "code": "bw9",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "Plasma Freeze",
+      "name_it": "Gelo Plasma",
+      "release_date": "2013-05-08",
+      "total_cards": 116,
+      "aliases": [
+        "plasma freeze",
+        "gelo plasma"
+      ]
+    },
+    {
+      "code": "bw10",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "Plasma Blast",
+      "name_it": "Esplosione Plasma",
+      "release_date": "2013-08-14",
+      "total_cards": 101,
+      "aliases": [
+        "plasma blast",
+        "esplosione plasma"
+      ]
+    },
+    {
+      "code": "bw11",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "Legendary Treasures",
+      "name_it": "Tesori Leggendari",
+      "release_date": "2013-11-06",
+      "total_cards": 113,
+      "aliases": [
+        "legendary treasures",
+        "tesori leggendari"
+      ]
+    },
+    {
+      "code": "xy0",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "Kalos Starter Set",
+      "name_it": "Kalos Starter Set",
+      "release_date": "2013-11-08",
+      "total_cards": 39,
+      "aliases": [
+        "kalos starter",
+        "starter kalos"
+      ]
+    },
+    {
+      "code": "xy1",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "XY",
+      "name_it": "XY",
+      "release_date": "2014-02-05",
+      "total_cards": 146,
+      "aliases": [
+        "xy",
+        "xy base"
+      ]
+    },
+    {
+      "code": "xy2",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "Flashfire",
+      "name_it": "Scintille",
+      "release_date": "2014-05-07",
+      "total_cards": 106,
+      "aliases": [
+        "flashfire",
+        "scintille"
+      ]
+    },
+    {
+      "code": "xy3",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "Furious Fists",
+      "name_it": "Pugni Furenti",
+      "release_date": "2014-08-13",
+      "total_cards": 111,
+      "aliases": [
+        "furious fists",
+        "pugni furenti"
+      ]
+    },
+    {
+      "code": "xy4",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "Phantom Forces",
+      "name_it": "Forze Fantasma",
+      "release_date": "2014-11-05",
+      "total_cards": 119,
+      "aliases": [
+        "phantom forces",
+        "forze fantasma"
+      ]
+    },
+    {
+      "code": "xy5",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "Primal Clash",
+      "name_it": "Scontro Primigenio",
+      "release_date": "2015-02-04",
+      "total_cards": 160,
+      "aliases": [
+        "primal clash",
+        "scontro primigenio"
+      ]
+    },
+    {
+      "code": "xy6",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "Roaring Skies",
+      "name_it": "Cieli Tonanti",
+      "release_date": "2015-05-06",
+      "total_cards": 108,
+      "aliases": [
+        "roaring skies",
+        "cieli tonanti"
+      ]
+    },
+    {
+      "code": "xy7",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "Ancient Origins",
+      "name_it": "Antiche Origini",
+      "release_date": "2015-08-12",
+      "total_cards": 98,
+      "aliases": [
+        "ancient origins",
+        "antiche origini"
+      ]
+    },
+    {
+      "code": "xy8",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "BREAKthrough",
+      "name_it": "Turbo Rottura",
+      "release_date": "2015-11-04",
+      "total_cards": 162,
+      "aliases": [
+        "breakthrough",
+        "turbo rottura"
+      ]
+    },
+    {
+      "code": "xy9",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "BREAKpoint",
+      "name_it": "Turbo Confronto",
+      "release_date": "2016-02-03",
+      "total_cards": 122,
+      "aliases": [
+        "breakpoint",
+        "turbo confronto"
+      ]
+    },
+    {
+      "code": "g1",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "Generations",
+      "name_it": "Generations",
+      "release_date": "2016-02-22",
+      "total_cards": 83,
+      "aliases": [
+        "generations"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "xy10",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "Fates Collide",
+      "name_it": "Destini Incrociati",
+      "release_date": "2016-05-02",
+      "total_cards": 124,
+      "aliases": [
+        "fates collide",
+        "destini incrociati"
+      ]
+    },
+    {
+      "code": "xy11",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "Steam Siege",
+      "name_it": "Vapore Confluente",
+      "release_date": "2016-08-03",
+      "total_cards": 114,
+      "aliases": [
+        "steam siege",
+        "vapore confluente"
+      ]
+    },
+    {
+      "code": "xy12",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "Evolutions",
+      "name_it": "Evoluzioni",
+      "release_date": "2016-11-02",
+      "total_cards": 108,
+      "aliases": [
+        "evolutions",
+        "evoluzioni"
+      ]
+    },
+    {
+      "code": "sm1",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Sun & Moon",
+      "name_it": "Sole e Luna",
+      "release_date": "2017-02-03",
+      "total_cards": 149,
+      "aliases": [
+        "sun moon",
+        "sole luna",
+        "sm base"
+      ]
+    },
+    {
+      "code": "sm2",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Guardians Rising",
+      "name_it": "Guardiani Nascenti",
+      "release_date": "2017-05-05",
+      "total_cards": 145,
+      "aliases": [
+        "guardians rising",
+        "guardiani nascenti"
+      ]
+    },
+    {
+      "code": "sm3",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Burning Shadows",
+      "name_it": "Ombre Infuocate",
+      "release_date": "2017-08-04",
+      "total_cards": 147,
+      "aliases": [
+        "burning shadows",
+        "ombre infuocate"
+      ]
+    },
+    {
+      "code": "sm35",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Shining Legends",
+      "name_it": "Leggende Iridescenti",
+      "release_date": "2017-10-06",
+      "total_cards": 73,
+      "aliases": [
+        "shining legends",
+        "leggende iridescenti"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "sm4",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Crimson Invasion",
+      "name_it": "Invasione Scarlatta",
+      "release_date": "2017-11-03",
+      "total_cards": 111,
+      "aliases": [
+        "crimson invasion",
+        "invasione scarlatta"
+      ]
+    },
+    {
+      "code": "sm5",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Ultra Prism",
+      "name_it": "Ultraprisma",
+      "release_date": "2018-02-02",
+      "total_cards": 156,
+      "aliases": [
+        "ultra prism",
+        "ultraprisma"
+      ]
+    },
+    {
+      "code": "sm6",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Forbidden Light",
+      "name_it": "Luce Proibita",
+      "release_date": "2018-05-04",
+      "total_cards": 131,
+      "aliases": [
+        "forbidden light",
+        "luce proibita"
+      ]
+    },
+    {
+      "code": "sm7",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Celestial Storm",
+      "name_it": "Tempesta Astrale",
+      "release_date": "2018-08-03",
+      "total_cards": 168,
+      "aliases": [
+        "celestial storm",
+        "tempesta astrale"
+      ]
+    },
+    {
+      "code": "sm75",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Dragon Majesty",
+      "name_it": "Maestà dei Draghi",
+      "release_date": "2018-09-07",
+      "total_cards": 70,
+      "aliases": [
+        "dragon majesty",
+        "maestà dei draghi"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "sm8",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Lost Thunder",
+      "name_it": "Tuoni Perduti",
+      "release_date": "2018-11-02",
+      "total_cards": 214,
+      "aliases": [
+        "lost thunder",
+        "tuoni perduti"
+      ]
+    },
+    {
+      "code": "sm9",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Team Up",
+      "name_it": "Gioco di Squadra",
+      "release_date": "2019-02-01",
+      "total_cards": 181,
+      "aliases": [
+        "team up",
+        "gioco di squadra"
+      ]
+    },
+    {
+      "code": "det1",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Detective Pikachu",
+      "name_it": "Detective Pikachu",
+      "release_date": "2019-04-05",
+      "total_cards": 18,
+      "aliases": [
+        "detective pikachu"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "sm10",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Unbroken Bonds",
+      "name_it": "Legami Inossidabili",
+      "release_date": "2019-05-03",
+      "total_cards": 214,
+      "aliases": [
+        "unbroken bonds",
+        "legami inossidabili"
+      ]
+    },
+    {
+      "code": "sm11",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Unified Minds",
+      "name_it": "Menti Unificate",
+      "release_date": "2019-08-02",
+      "total_cards": 236,
+      "aliases": [
+        "unified minds",
+        "menti unificate"
+      ]
+    },
+    {
+      "code": "sm115",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Hidden Fates",
+      "name_it": "Destini Occulti",
+      "release_date": "2019-08-23",
+      "total_cards": 68,
+      "aliases": [
+        "hidden fates",
+        "destini occulti"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "sm12",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Cosmic Eclipse",
+      "name_it": "Eclissi Cosmica",
+      "release_date": "2019-11-01",
+      "total_cards": 236,
+      "aliases": [
+        "cosmic eclipse",
+        "eclissi cosmica"
+      ]
+    },
+    {
+      "code": "swsh1",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Sword & Shield",
+      "name_it": "Spada e Scudo",
+      "release_date": "2020-02-07",
+      "total_cards": 202,
+      "aliases": [
+        "sword shield",
+        "spada scudo",
+        "swsh base"
+      ]
+    },
+    {
+      "code": "swsh2",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Rebel Clash",
+      "name_it": "Sfida dei Ribelli",
+      "release_date": "2020-05-01",
+      "total_cards": 192,
+      "aliases": [
+        "rebel clash",
+        "sfida dei ribelli"
+      ]
+    },
+    {
+      "code": "swsh3",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Darkness Ablaze",
+      "name_it": "Oscurità Inferocita",
+      "release_date": "2020-08-14",
+      "total_cards": 189,
+      "aliases": [
+        "darkness ablaze",
+        "oscurità inferocita"
+      ]
+    },
+    {
+      "code": "swsh35",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Champion's Path",
+      "name_it": "Sentiero del Campione",
+      "release_date": "2020-09-25",
+      "total_cards": 73,
+      "aliases": [
+        "champion's path",
+        "champions path",
+        "sentiero del campione"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "swsh4",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Vivid Voltage",
+      "name_it": "Voltaggio Sfolgorante",
+      "release_date": "2020-11-13",
+      "total_cards": 185,
+      "aliases": [
+        "vivid voltage",
+        "voltaggio sfolgorante"
+      ]
+    },
+    {
+      "code": "swsh45",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Shining Fates",
+      "name_it": "Destini Splendenti",
+      "release_date": "2021-02-19",
+      "total_cards": 195,
+      "aliases": [
+        "shining fates",
+        "destini splendenti"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "swsh5",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Battle Styles",
+      "name_it": "Stili di Lotta",
+      "release_date": "2021-03-19",
+      "total_cards": 163,
+      "aliases": [
+        "battle styles",
+        "stili di lotta"
+      ]
+    },
+    {
+      "code": "swsh6",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Chilling Reign",
+      "name_it": "Regno Glaciale",
+      "release_date": "2021-06-18",
+      "total_cards": 198,
+      "aliases": [
+        "chilling reign",
+        "regno glaciale"
+      ]
+    },
+    {
+      "code": "swsh7",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Evolving Skies",
+      "name_it": "Cieli Mutevoli",
+      "release_date": "2021-08-27",
+      "total_cards": 203,
+      "aliases": [
+        "evolving skies",
+        "cieli mutevoli"
+      ]
+    },
+    {
+      "code": "cel25",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Celebrations",
+      "name_it": "Celebrazioni",
+      "release_date": "2021-10-08",
+      "total_cards": 25,
+      "aliases": [
+        "celebrations",
+        "celebrazioni",
+        "25th anniversary"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "swsh8",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Fusion Strike",
+      "name_it": "Colpo Fusione",
+      "release_date": "2021-11-12",
+      "total_cards": 264,
+      "aliases": [
+        "fusion strike",
+        "colpo fusione"
+      ]
+    },
+    {
+      "code": "swsh9",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Brilliant Stars",
+      "name_it": "Stelle Radiose",
+      "release_date": "2022-02-25",
+      "total_cards": 172,
+      "aliases": [
+        "brilliant stars",
+        "stelle radiose"
+      ]
+    },
+    {
+      "code": "swsh10",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Astral Radiance",
+      "name_it": "Splendore Astrale",
+      "release_date": "2022-05-27",
+      "total_cards": 189,
+      "aliases": [
+        "astral radiance",
+        "splendore astrale"
+      ]
+    },
+    {
+      "code": "pgo",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Pokémon GO",
+      "name_it": "Pokémon GO",
+      "release_date": "2022-07-01",
+      "total_cards": 78,
+      "aliases": [
+        "pokemon go",
+        "pgo"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "swsh11",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Lost Origin",
+      "name_it": "Origine Perduta",
+      "release_date": "2022-09-09",
+      "total_cards": 196,
+      "aliases": [
+        "lost origin",
+        "origine perduta"
+      ]
+    },
+    {
+      "code": "swsh12",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Silver Tempest",
+      "name_it": "Tempesta Argentata",
+      "release_date": "2022-11-11",
+      "total_cards": 195,
+      "aliases": [
+        "silver tempest",
+        "tempesta argentata"
+      ]
+    },
+    {
+      "code": "swsh12pt5",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Crown Zenith",
+      "name_it": "Zenit Regale",
+      "release_date": "2023-01-20",
+      "total_cards": 159,
+      "aliases": [
+        "crown zenith",
+        "zenit regale"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "sv1",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Scarlet & Violet",
+      "name_it": "Scarlatto e Violetto",
+      "release_date": "2023-03-31",
+      "total_cards": 198,
+      "aliases": [
+        "scarlet violet",
+        "scarlatto violetto",
+        "sv base"
+      ]
+    },
+    {
+      "code": "sv2",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Paldea Evolved",
+      "name_it": "Evoluzioni a Paldea",
+      "release_date": "2023-06-09",
+      "total_cards": 193,
+      "aliases": [
+        "paldea evolved",
+        "evoluzioni a paldea"
+      ]
+    },
+    {
+      "code": "sv3",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Obsidian Flames",
+      "name_it": "Fiamme Obsidiane",
+      "release_date": "2023-08-11",
+      "total_cards": 197,
+      "aliases": [
+        "obsidian flames",
+        "fiamme obsidiane"
+      ]
+    },
+    {
+      "code": "sv3pt5",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "151",
+      "name_it": "151",
+      "release_date": "2023-09-22",
+      "total_cards": 165,
+      "aliases": [
+        "151",
+        "scarlet violet 151"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "sv4",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Paradox Rift",
+      "name_it": "Frattura Paradossale",
+      "release_date": "2023-11-03",
+      "total_cards": 182,
+      "aliases": [
+        "paradox rift",
+        "frattura paradossale"
+      ]
+    },
+    {
+      "code": "sv4pt5",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Paldean Fates",
+      "name_it": "Destini di Paldea",
+      "release_date": "2024-01-26",
+      "total_cards": 91,
+      "aliases": [
+        "paldean fates",
+        "destini di paldea"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "sv5",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Temporal Forces",
+      "name_it": "Forze Temporali",
+      "release_date": "2024-03-22",
+      "total_cards": 162,
+      "aliases": [
+        "temporal forces",
+        "forze temporali"
+      ]
+    },
+    {
+      "code": "sv6",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Twilight Masquerade",
+      "name_it": "Maschera del Crepuscolo",
+      "release_date": "2024-05-24",
+      "total_cards": 167,
+      "aliases": [
+        "twilight masquerade",
+        "maschera del crepuscolo"
+      ]
+    },
+    {
+      "code": "sv6pt5",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Shrouded Fable",
+      "name_it": "Favola Avvolta nel Mistero",
+      "release_date": "2024-08-02",
+      "total_cards": 99,
+      "aliases": [
+        "shrouded fable",
+        "favola avvolta nel mistero"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "sv7",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Stellar Crown",
+      "name_it": "Corona Stellare",
+      "release_date": "2024-09-13",
+      "total_cards": 142,
+      "aliases": [
+        "stellar crown",
+        "corona stellare"
+      ]
+    },
+    {
+      "code": "sv8",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Surging Sparks",
+      "name_it": "Scintille Folgoranti",
+      "release_date": "2024-11-08",
+      "total_cards": 191,
+      "aliases": [
+        "surging sparks",
+        "scintille folgoranti"
+      ]
+    },
+    {
+      "code": "sv8pt5",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Prismatic Evolutions",
+      "name_it": "Evoluzioni Prismatiche",
+      "release_date": "2025-01-17",
+      "total_cards": 131,
+      "aliases": [
+        "prismatic evolutions",
+        "evoluzioni prismatiche"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "sv9",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Journey Together",
+      "name_it": "Viaggio Insieme",
+      "release_date": "2025-03-28",
+      "total_cards": 159,
+      "aliases": [
+        "journey together",
+        "viaggio insieme"
+      ]
+    },
+    {
+      "code": "sv10",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Destined Rivals",
+      "name_it": "Rivali Designati",
+      "release_date": "2025-05-30",
+      "total_cards": null,
+      "aliases": [
+        "destined rivals",
+        "rivali designati"
+      ]
+    },
+    {
+      "code": "blk",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Black Bolt",
+      "name_it": "Black Bolt",
+      "release_date": "2025-07-18",
+      "total_cards": null,
+      "aliases": [
+        "black bolt"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "wht",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "White Flare",
+      "name_it": "White Flare",
+      "release_date": "2025-07-18",
+      "total_cards": null,
+      "aliases": [
+        "white flare"
+      ],
+      "is_special": true
+    },
+    {
+      "code": "me01",
+      "game": "pokemon",
+      "series": "Mega Evolution",
+      "name_en": "Mega Evolution",
+      "name_it": "Mega Evoluzione",
+      "release_date": "2025-09-26",
+      "total_cards": null,
+      "aliases": [
+        "mega evolution",
+        "mega evoluzione",
+        "me base"
+      ]
+    },
+    {
+      "code": "me02",
+      "game": "pokemon",
+      "series": "Mega Evolution",
+      "name_en": "Phantasmal Flames",
+      "name_it": "Phantasmal Flames",
+      "release_date": "2025-11-14",
+      "total_cards": null,
+      "aliases": [
+        "phantasmal flames",
+        "fiamme spettrali"
+      ]
+    },
+    {
+      "code": "me03",
+      "game": "pokemon",
+      "series": "Mega Evolution",
+      "name_en": "Ascended Heroes",
+      "name_it": "Ascended Heroes",
+      "release_date": "2026-01-30",
+      "total_cards": null,
+      "aliases": [
+        "ascended heroes"
+      ]
+    },
+    {
+      "code": "me04",
+      "game": "pokemon",
+      "series": "Mega Evolution",
+      "name_en": "Perfect Order",
+      "name_it": "Perfect Order",
+      "release_date": "2026-03-27",
+      "total_cards": null,
+      "aliases": [
+        "perfect order"
+      ]
+    },
+    {
+      "code": "me05",
+      "game": "pokemon",
+      "series": "Mega Evolution",
+      "name_en": "Chaos Rising",
+      "name_it": "Chaos Rising",
+      "release_date": "2026-05-22",
+      "total_cards": null,
+      "aliases": [
+        "chaos rising"
+      ]
+    },
+    {
+      "code": "si1",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "Southern Islands",
+      "name_it": "Southern Islands",
+      "release_date": "2001-07-31",
+      "total_cards": 18,
+      "aliases": [
+        "southern islands"
+      ]
+    },
+    {
+      "code": "np",
+      "game": "pokemon",
+      "series": "NP",
+      "name_en": "Nintendo Black Star Promos",
+      "name_it": "Nintendo Black Star Promos",
+      "release_date": "2003-10-01",
+      "total_cards": 40,
+      "aliases": [
+        "nintendo black star promos"
+      ]
+    },
+    {
+      "code": "pop1",
+      "game": "pokemon",
+      "series": "POP",
+      "name_en": "POP Series 1",
+      "name_it": "POP Series 1",
+      "release_date": "2004-09-01",
+      "total_cards": 17,
+      "aliases": [
+        "pop series 1"
+      ]
+    },
+    {
+      "code": "pop2",
+      "game": "pokemon",
+      "series": "POP",
+      "name_en": "POP Series 2",
+      "name_it": "POP Series 2",
+      "release_date": "2005-08-01",
+      "total_cards": 17,
+      "aliases": [
+        "pop series 2"
+      ]
+    },
+    {
+      "code": "pop3",
+      "game": "pokemon",
+      "series": "POP",
+      "name_en": "POP Series 3",
+      "name_it": "POP Series 3",
+      "release_date": "2006-04-01",
+      "total_cards": 17,
+      "aliases": [
+        "pop series 3"
+      ]
+    },
+    {
+      "code": "pop4",
+      "game": "pokemon",
+      "series": "POP",
+      "name_en": "POP Series 4",
+      "name_it": "POP Series 4",
+      "release_date": "2006-08-01",
+      "total_cards": 17,
+      "aliases": [
+        "pop series 4"
+      ]
+    },
+    {
+      "code": "pop5",
+      "game": "pokemon",
+      "series": "POP",
+      "name_en": "POP Series 5",
+      "name_it": "POP Series 5",
+      "release_date": "2007-03-01",
+      "total_cards": 17,
+      "aliases": [
+        "pop series 5"
+      ]
+    },
+    {
+      "code": "dpp",
+      "game": "pokemon",
+      "series": "Diamond & Pearl",
+      "name_en": "DP Black Star Promos",
+      "name_it": "DP Black Star Promos",
+      "release_date": "2007-05-01",
+      "total_cards": 56,
+      "aliases": [
+        "dp black star promos"
+      ]
+    },
+    {
+      "code": "pop6",
+      "game": "pokemon",
+      "series": "POP",
+      "name_en": "POP Series 6",
+      "name_it": "POP Series 6",
+      "release_date": "2007-09-01",
+      "total_cards": 17,
+      "aliases": [
+        "pop series 6"
+      ]
+    },
+    {
+      "code": "pop7",
+      "game": "pokemon",
+      "series": "POP",
+      "name_en": "POP Series 7",
+      "name_it": "POP Series 7",
+      "release_date": "2008-03-01",
+      "total_cards": 17,
+      "aliases": [
+        "pop series 7"
+      ]
+    },
+    {
+      "code": "pop8",
+      "game": "pokemon",
+      "series": "POP",
+      "name_en": "POP Series 8",
+      "name_it": "POP Series 8",
+      "release_date": "2008-09-01",
+      "total_cards": 17,
+      "aliases": [
+        "pop series 8"
+      ]
+    },
+    {
+      "code": "pop9",
+      "game": "pokemon",
+      "series": "POP",
+      "name_en": "POP Series 9",
+      "name_it": "POP Series 9",
+      "release_date": "2009-03-01",
+      "total_cards": 17,
+      "aliases": [
+        "pop series 9"
+      ]
+    },
+    {
+      "code": "ru1",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "Pokémon Rumble",
+      "name_it": "Pokémon Rumble",
+      "release_date": "2009-12-02",
+      "total_cards": 16,
+      "aliases": [
+        "pokémon rumble"
+      ]
+    },
+    {
+      "code": "hsp",
+      "game": "pokemon",
+      "series": "HeartGold & SoulSilver",
+      "name_en": "HGSS Black Star Promos",
+      "name_it": "HGSS Black Star Promos",
+      "release_date": "2010-02-10",
+      "total_cards": 25,
+      "aliases": [
+        "hgss black star promos"
+      ]
+    },
+    {
+      "code": "bwp",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "BW Black Star Promos",
+      "name_it": "BW Black Star Promos",
+      "release_date": "2011-03-01",
+      "total_cards": 101,
+      "aliases": [
+        "bw black star promos"
+      ]
+    },
+    {
+      "code": "mcd11",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "McDonald's Collection 2011",
+      "name_it": "McDonald's Collection 2011",
+      "release_date": "2011-06-17",
+      "total_cards": 12,
+      "aliases": [
+        "mcdonald's collection 2011"
+      ]
+    },
+    {
+      "code": "mcd12",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "McDonald's Collection 2012",
+      "name_it": "McDonald's Collection 2012",
+      "release_date": "2012-06-15",
+      "total_cards": 12,
+      "aliases": [
+        "mcdonald's collection 2012"
+      ]
+    },
+    {
+      "code": "dv1",
+      "game": "pokemon",
+      "series": "Black & White",
+      "name_en": "Dragon Vault",
+      "name_it": "Dragon Vault",
+      "release_date": "2012-10-05",
+      "total_cards": 20,
+      "aliases": [
+        "dragon vault"
+      ]
+    },
+    {
+      "code": "xyp",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "XY Black Star Promos",
+      "name_it": "XY Black Star Promos",
+      "release_date": "2013-10-12",
+      "total_cards": 211,
+      "aliases": [
+        "xy black star promos"
+      ]
+    },
+    {
+      "code": "dc1",
+      "game": "pokemon",
+      "series": "XY",
+      "name_en": "Double Crisis",
+      "name_it": "Double Crisis",
+      "release_date": "2015-03-25",
+      "total_cards": 34,
+      "aliases": [
+        "double crisis"
+      ]
+    },
+    {
+      "code": "mcd16",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "McDonald's Collection 2016",
+      "name_it": "McDonald's Collection 2016",
+      "release_date": "2016-08-19",
+      "total_cards": 12,
+      "aliases": [
+        "mcdonald's collection 2016"
+      ]
+    },
+    {
+      "code": "smp",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "SM Black Star Promos",
+      "name_it": "SM Black Star Promos",
+      "release_date": "2017-02-03",
+      "total_cards": 248,
+      "aliases": [
+        "sm black star promos"
+      ]
+    },
+    {
+      "code": "sma",
+      "game": "pokemon",
+      "series": "Sun & Moon",
+      "name_en": "Hidden Fates Shiny Vault",
+      "name_it": "Hidden Fates Shiny Vault",
+      "release_date": "2019-08-23",
+      "total_cards": 94,
+      "aliases": [
+        "hidden fates shiny vault"
+      ]
+    },
+    {
+      "code": "mcd19",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "McDonald's Collection 2019",
+      "name_it": "McDonald's Collection 2019",
+      "release_date": "2019-10-15",
+      "total_cards": 12,
+      "aliases": [
+        "mcdonald's collection 2019"
+      ]
+    },
+    {
+      "code": "swshp",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "SWSH Black Star Promos",
+      "name_it": "SWSH Black Star Promos",
+      "release_date": "2019-11-15",
+      "total_cards": 307,
+      "aliases": [
+        "swsh black star promos"
+      ]
+    },
+    {
+      "code": "swsh45sv",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Shining Fates Shiny Vault",
+      "name_it": "Shining Fates Shiny Vault",
+      "release_date": "2021-02-19",
+      "total_cards": 122,
+      "aliases": [
+        "shining fates shiny vault"
+      ]
+    },
+    {
+      "code": "cel25c",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Celebrations: Classic Collection",
+      "name_it": "Celebrations: Classic Collection",
+      "release_date": "2021-10-08",
+      "total_cards": 25,
+      "aliases": [
+        "celebrations: classic collection"
+      ]
+    },
+    {
+      "code": "mcd14",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "McDonald's Collection 2014",
+      "name_it": "McDonald's Collection 2014",
+      "release_date": "2014-05-23",
+      "total_cards": 12,
+      "aliases": [
+        "mcdonald's collection 2014"
+      ]
+    },
+    {
+      "code": "mcd15",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "McDonald's Collection 2015",
+      "name_it": "McDonald's Collection 2015",
+      "release_date": "2015-11-27",
+      "total_cards": 12,
+      "aliases": [
+        "mcdonald's collection 2015"
+      ]
+    },
+    {
+      "code": "mcd18",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "McDonald's Collection 2018",
+      "name_it": "McDonald's Collection 2018",
+      "release_date": "2018-10-16",
+      "total_cards": 12,
+      "aliases": [
+        "mcdonald's collection 2018"
+      ]
+    },
+    {
+      "code": "mcd17",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "McDonald's Collection 2017",
+      "name_it": "McDonald's Collection 2017",
+      "release_date": "2017-11-07",
+      "total_cards": 12,
+      "aliases": [
+        "mcdonald's collection 2017"
+      ]
+    },
+    {
+      "code": "mcd21",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "McDonald's Collection 2021",
+      "name_it": "McDonald's Collection 2021",
+      "release_date": "2021-02-09",
+      "total_cards": 25,
+      "aliases": [
+        "mcdonald's collection 2021"
+      ]
+    },
+    {
+      "code": "bp",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "Best of Game",
+      "name_it": "Best of Game",
+      "release_date": "2002-12-01",
+      "total_cards": 9,
+      "aliases": [
+        "best of game"
+      ]
+    },
+    {
+      "code": "fut20",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "Pokémon Futsal Collection",
+      "name_it": "Pokémon Futsal Collection",
+      "release_date": "2020-09-11",
+      "total_cards": 5,
+      "aliases": [
+        "pokémon futsal collection"
+      ]
+    },
+    {
+      "code": "tk1a",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Trainer Kit Latias",
+      "name_it": "EX Trainer Kit Latias",
+      "release_date": "2004-06-01",
+      "total_cards": 10,
+      "aliases": [
+        "ex trainer kit latias"
+      ]
+    },
+    {
+      "code": "tk1b",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Trainer Kit Latios",
+      "name_it": "EX Trainer Kit Latios",
+      "release_date": "2004-06-01",
+      "total_cards": 10,
+      "aliases": [
+        "ex trainer kit latios"
+      ]
+    },
+    {
+      "code": "tk2a",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Trainer Kit 2 Plusle",
+      "name_it": "EX Trainer Kit 2 Plusle",
+      "release_date": "2006-03-01",
+      "total_cards": 12,
+      "aliases": [
+        "ex trainer kit 2 plusle"
+      ]
+    },
+    {
+      "code": "tk2b",
+      "game": "pokemon",
+      "series": "EX",
+      "name_en": "EX Trainer Kit 2 Minun",
+      "name_it": "EX Trainer Kit 2 Minun",
+      "release_date": "2006-03-01",
+      "total_cards": 12,
+      "aliases": [
+        "ex trainer kit 2 minun"
+      ]
+    },
+    {
+      "code": "swsh9tg",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Brilliant Stars Trainer Gallery",
+      "name_it": "Brilliant Stars Trainer Gallery",
+      "release_date": "2022-02-25",
+      "total_cards": 30,
+      "aliases": [
+        "brilliant stars trainer gallery"
+      ]
+    },
+    {
+      "code": "swsh10tg",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Astral Radiance Trainer Gallery",
+      "name_it": "Astral Radiance Trainer Gallery",
+      "release_date": "2022-05-27",
+      "total_cards": 30,
+      "aliases": [
+        "astral radiance trainer gallery"
+      ]
+    },
+    {
+      "code": "swsh11tg",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Lost Origin Trainer Gallery",
+      "name_it": "Lost Origin Trainer Gallery",
+      "release_date": "2022-09-09",
+      "total_cards": 30,
+      "aliases": [
+        "lost origin trainer gallery"
+      ]
+    },
+    {
+      "code": "swsh12tg",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Silver Tempest Trainer Gallery",
+      "name_it": "Silver Tempest Trainer Gallery",
+      "release_date": "2022-11-11",
+      "total_cards": 30,
+      "aliases": [
+        "silver tempest trainer gallery"
+      ]
+    },
+    {
+      "code": "mcd22",
+      "game": "pokemon",
+      "series": "Other",
+      "name_en": "McDonald's Collection 2022",
+      "name_it": "McDonald's Collection 2022",
+      "release_date": "2022-08-03",
+      "total_cards": 15,
+      "aliases": [
+        "mcdonald's collection 2022"
+      ]
+    },
+    {
+      "code": "swsh12pt5gg",
+      "game": "pokemon",
+      "series": "Sword & Shield",
+      "name_en": "Crown Zenith Galarian Gallery",
+      "name_it": "Crown Zenith Galarian Gallery",
+      "release_date": "2023-01-20",
+      "total_cards": 70,
+      "aliases": [
+        "crown zenith galarian gallery"
+      ]
+    },
+    {
+      "code": "svp",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Scarlet & Violet Black Star Promos",
+      "name_it": "Scarlet & Violet Black Star Promos",
+      "release_date": "2023-01-01",
+      "total_cards": 215,
+      "aliases": [
+        "scarlet & violet black star promos"
+      ]
+    },
+    {
+      "code": "sve",
+      "game": "pokemon",
+      "series": "Scarlet & Violet",
+      "name_en": "Scarlet & Violet Energies",
+      "name_it": "Scarlet & Violet Energies",
+      "release_date": "2023-03-31",
+      "total_cards": 8,
+      "aliases": [
+        "scarlet & violet energies"
+      ]
+    }
   ]
 }

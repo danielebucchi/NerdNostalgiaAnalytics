@@ -585,47 +585,77 @@ async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     except Exception:
                         continue
 
-        # Find Pokemon names in OCR text
-        detected = _detect_pokemon_in_text(all_text)
+        # First-pass: hand the noisy OCR text to the LLM normalizer. It knows
+        # the expansion catalogue and few-shot patterns, so it can usually
+        # extract name + set + variant + number even from garbled OCR output.
+        from src.utils.llm_parser import llm_parse_card_query
 
-        if detected:
-            pokemon_name = detected[0]
-            await msg.edit_text(f"🔍 Riconosciuto: *{pokemon_name.title()}*\nCerco...", parse_mode="Markdown")
+        parsed = None
+        try:
+            parsed = await llm_parse_card_query(all_text.strip())
+        except Exception as e:
+            logger.warning(f"OCR LLM normalization failed: {e}")
 
-            # Search with the Pokemon name
-            search_queries = [pokemon_name]
-            # Add card type modifiers if detected in text
-            text_lower = all_text.lower()
-            for modifier in ["gold star", "ex", "gx", "vmax", "vstar", "v", "mega", "full art", "alt art"]:
-                if modifier in text_lower:
-                    search_queries.insert(0, f"{pokemon_name} {modifier}")
+        search_queries: list[str] = []
+        recognized_label: str | None = None
+        if parsed and parsed.confidence >= 0.3 and parsed.name:
+            # Build a clean PriceCharting query from the LLM extraction.
+            bits = [parsed.name]
+            if parsed.expansion:
+                bits.append(parsed.expansion.name_en)
+            if parsed.variant and parsed.variant not in ("non holo",):
+                bits.append(parsed.variant)
+            search_queries.append(" ".join(bits))
+            # Plain-name fallback in case the first query returns nothing.
+            search_queries.append(parsed.name)
+            recognized_label = parsed.name
+            if parsed.expansion:
+                recognized_label += f" — {parsed.expansion.name_en}"
 
-            results = []
+        # Rule-based fallback: scan OCR text for known Pokemon names + modifiers.
+        if not search_queries:
+            detected = _detect_pokemon_in_text(all_text)
+            if detected:
+                pokemon_name = detected[0]
+                search_queries.append(pokemon_name)
+                text_lower = all_text.lower()
+                for modifier in ["gold star", "ex", "gx", "vmax", "vstar", "v", "mega", "full art", "alt art"]:
+                    if modifier in text_lower:
+                        search_queries.insert(0, f"{pokemon_name} {modifier}")
+                recognized_label = pokemon_name.title()
+
+        results = []
+        if search_queries:
+            label = recognized_label or search_queries[0]
+            await msg.edit_text(
+                f"🔍 Riconosciuto: *{label}*\nCerco...",
+                parse_mode="Markdown",
+            )
             for q in search_queries:
                 results = await pc.search(q, max_results=5)
                 if results:
                     break
 
-            if results:
-                from src.bot.keyboards import search_result_keyboard
-                from src.bot.handlers.search import _save_and_get_product
+        if results:
+            from src.bot.keyboards import search_result_keyboard
+            from src.bot.handlers.search import _save_and_get_product
 
-                products_data = []
-                for r in results[:5]:
-                    product = await _save_and_get_product(r)
-                    products_data.append({
-                        "name": r.name, "product_id": product.id, "current_price": r.current_price,
-                    })
+            products_data = []
+            for r in results[:5]:
+                product = await _save_and_get_product(r)
+                products_data.append({
+                    "name": r.name, "product_id": product.id, "current_price": r.current_price,
+                })
 
-                await msg.edit_text(
-                    f"📷 Riconosciuto: *{pokemon_name.title()}*\n"
-                    f"Trovati {len(results)} risultati:",
-                    parse_mode="Markdown",
-                )
-                await update.message.reply_text(
-                    "Seleziona:", reply_markup=search_result_keyboard(products_data),
-                )
-                return
+            await msg.edit_text(
+                f"📷 Riconosciuto: *{recognized_label or search_queries[0]}*\n"
+                f"Trovati {len(results)} risultati:",
+                parse_mode="Markdown",
+            )
+            await update.message.reply_text(
+                "Seleziona:", reply_markup=search_result_keyboard(products_data),
+            )
+            return
 
         # --- Strategy 3: Google Lens fallback ---
         lens_url = _google_lens_url(file_url) if file_url else ""
