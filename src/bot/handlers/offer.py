@@ -8,6 +8,14 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from src.bot.picker import (
+    build_picker_keyboard,
+    discard_picker_state,
+    parse_picker_callback,
+    retrieve_picker_state,
+    stash_picker_state,
+)
+
 from sqlalchemy import select
 
 from src.analysis.indicators import analyze, Signal
@@ -113,8 +121,6 @@ async def offer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🧮 Calcolo offerta per '{query}' (margine {target_margin:.0f}%)..."
     )
 
-    rates = await get_exchange_rates()
-
     # 1. Market price
     results = await pc.search(pc_query, max_results=10)
     if not results and pc_query != query:
@@ -124,7 +130,33 @@ async def offer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     best_idx, match_confidence = best_match_with_confidence(pc_query, results)
+
+    # Same picker threshold as /evaluate — any non-🟢 match prompts the user.
+    if match_confidence < 0.6 and len(results) >= 2:
+        await _show_offer_picker(
+            msg, context, results[:5], best_idx,
+            target_margin=target_margin,
+            forced_card_cond=forced_card_cond,
+            query=query,
+        )
+        return
+
+    await _finish_offer(
+        msg, context, results, best_idx, match_confidence,
+        target_margin=target_margin,
+        forced_card_cond=forced_card_cond,
+        query=query,
+    )
+
+
+async def _finish_offer(
+    msg, context, results, best_idx, match_confidence,
+    *, target_margin, forced_card_cond, query,
+):
+    """Continue /offer with a chosen product. Reused by auto-pick and picker."""
+    rates = await get_exchange_rates()
     product_result = results[best_idx]
+    user = context.user_data.get("user") if context.user_data else None
     market_usd = product_result.current_price or 0
     market_eur = usd_to_eur(market_usd, rates) if market_usd else 0
 
@@ -316,3 +348,73 @@ def _estimate_resale_price(
         resale *= _RAW_GRADE_MULTIPLIER.get(card_cond.raw_grade, 1.0)
 
     return resale
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Picker for /offer — same UX as /evaluate. State stashed under "offer"
+# namespace so /evaluate and /offer pickers don't share tokens.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_PICKER_NAMESPACE = "offer"
+_PICKER_PREFIX = "offer_pick"
+
+
+async def _show_offer_picker(
+    msg, context, candidates, suggested_idx,
+    *, target_margin, forced_card_cond, query,
+):
+    token = stash_picker_state(context, _PICKER_NAMESPACE, {
+        "results": candidates,
+        "target_margin": target_margin,
+        "forced_card_cond": forced_card_cond,
+        "query": query,
+    })
+    kb = build_picker_keyboard(candidates, suggested_idx, _PICKER_PREFIX, token)
+    await msg.edit_text(
+        f"❓ *Match incerto per '{query}'*\n\n"
+        f"Trovati più candidati — scegli quello giusto:",
+        parse_mode="Markdown",
+        reply_markup=kb,
+    )
+
+
+async def offer_pick_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """CallbackQueryHandler entry-point for `offer_pick:<token>:<idx|cancel>`."""
+    q = update.callback_query
+    await q.answer()
+    token, choice = parse_picker_callback(q.data)
+    if not token or choice is None:
+        await q.edit_message_text("⚠ Callback malformato.")
+        return
+
+    if choice == "cancel":
+        await q.edit_message_text("❌ Offerta annullata.")
+        discard_picker_state(context, _PICKER_NAMESPACE, token)
+        return
+
+    state = retrieve_picker_state(context, _PICKER_NAMESPACE, token)
+    if state is None:
+        await q.edit_message_text("⏱ Sessione picker scaduta — rilancia /offer.")
+        return
+
+    try:
+        chosen_idx = int(choice)
+    except ValueError:
+        await q.edit_message_text("⚠ Indice non valido.")
+        return
+
+    results = state["results"]
+    if not (0 <= chosen_idx < len(results)):
+        await q.edit_message_text("⚠ Indice fuori range.")
+        return
+
+    await q.edit_message_text(
+        f"🧮 Calcolo offerta per *{results[chosen_idx].name}*...",
+        parse_mode="Markdown",
+    )
+    await _finish_offer(
+        q.message, context, results, chosen_idx, 1.0,
+        target_margin=state["target_margin"],
+        forced_card_cond=state["forced_card_cond"],
+        query=state["query"],
+    )

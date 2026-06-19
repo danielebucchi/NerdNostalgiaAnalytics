@@ -4,11 +4,17 @@ Combina: prezzo di mercato, segnale tecnico, previsione, hype, margini di rivend
 """
 import logging
 import re
-import secrets
-import time
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import Update
 from telegram.ext import ContextTypes
+
+from src.bot.picker import (
+    build_picker_keyboard,
+    discard_picker_state,
+    parse_picker_callback,
+    retrieve_picker_state,
+    stash_picker_state,
+)
 
 from sqlalchemy import select
 
@@ -484,44 +490,12 @@ def _calculate_resale(buy_eur: float, market_eur: float, vinted_avg: float | Non
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Top-N picker.
-#
-# When best_match isn't confident, we'd rather ask than guess. We stash the
-# in-progress evaluate state in `context.user_data` keyed by a short random
-# token, and show an inline keyboard with the top candidates. The callback
-# re-enters `_finish_evaluate` with the user's choice.
+# Top-N picker. State management lives in src/bot/picker.py — this module
+# just wires the /evaluate flow through it.
 # ─────────────────────────────────────────────────────────────────────────────
 
-_PICKER_TTL_SECONDS = 5 * 60       # state expires after 5 minutes
-_PICKER_MAX_CANDIDATES = 5
-
-
-def _stash_picker_state(context: ContextTypes.DEFAULT_TYPE, state: dict) -> str:
-    """Save the picker state and return the short token used in callback_data."""
-    bucket = context.user_data.setdefault("evaluate_picker", {})
-    # Evict expired entries first — `user_data` is per-user, so this stays small.
-    now = time.time()
-    for k in list(bucket):
-        if bucket[k].get("expires_at", 0) < now:
-            del bucket[k]
-    token = secrets.token_urlsafe(6)
-    state["expires_at"] = now + _PICKER_TTL_SECONDS
-    bucket[token] = state
-    return token
-
-
-def _retrieve_picker_state(context: ContextTypes.DEFAULT_TYPE, token: str) -> dict | None:
-    bucket = (context.user_data or {}).get("evaluate_picker") or {}
-    state = bucket.get(token)
-    if not state:
-        return None
-    if state.get("expires_at", 0) < time.time():
-        del bucket[token]
-        return None
-    # One-shot: remove after retrieval so re-clicking the same button doesn't
-    # double-run the evaluation.
-    del bucket[token]
-    return state
+_PICKER_NAMESPACE = "evaluate"
+_PICKER_PREFIX = "eval_pick"
 
 
 async def _show_picker_keyboard(
@@ -529,7 +503,7 @@ async def _show_picker_keyboard(
     *, offered_eur, forced_card_cond, forced_condition, query, pc_query, bundle,
 ):
     """Render the inline keyboard for the top candidates and stash the state."""
-    token = _stash_picker_state(context, {
+    token = stash_picker_state(context, _PICKER_NAMESPACE, {
         "results": candidates,
         "offered_eur": offered_eur,
         "forced_card_cond": forced_card_cond,
@@ -538,21 +512,12 @@ async def _show_picker_keyboard(
         "pc_query": pc_query,
         "bundle": bundle,
     })
-
-    rows = []
-    for i, r in enumerate(candidates):
-        marker = "💡 " if i == suggested_idx else ""
-        # Telegram caps button labels at ~64 chars — name is usually short
-        # enough but truncate just in case.
-        label = f"{marker}{r.name}"[:60]
-        rows.append([InlineKeyboardButton(label, callback_data=f"eval_pick:{token}:{i}")])
-    rows.append([InlineKeyboardButton("❌ Annulla", callback_data=f"eval_pick:{token}:cancel")])
-
+    kb = build_picker_keyboard(candidates, suggested_idx, _PICKER_PREFIX, token)
     await msg.edit_text(
         f"❓ *Match incerto per '{query}'*\n\n"
         f"Trovati più candidati — scegli quello giusto:",
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(rows),
+        reply_markup=kb,
     )
 
 
@@ -560,27 +525,23 @@ async def evaluate_pick_callback(update: Update, context: ContextTypes.DEFAULT_T
     """CallbackQueryHandler entry-point for `eval_pick:<token>:<idx|cancel>`."""
     q = update.callback_query
     await q.answer()
-    try:
-        _, token, idx_str = q.data.split(":", 2)
-    except ValueError:
+    token, choice = parse_picker_callback(q.data)
+    if not token or choice is None:
         await q.edit_message_text("⚠ Callback malformato.")
         return
 
-    if idx_str == "cancel":
+    if choice == "cancel":
         await q.edit_message_text("❌ Valutazione annullata.")
-        # Free the state without running the evaluation.
-        _retrieve_picker_state(context, token)
+        discard_picker_state(context, _PICKER_NAMESPACE, token)
         return
 
-    state = _retrieve_picker_state(context, token)
+    state = retrieve_picker_state(context, _PICKER_NAMESPACE, token)
     if state is None:
-        await q.edit_message_text(
-            "⏱ Sessione picker scaduta — rilancia /evaluate."
-        )
+        await q.edit_message_text("⏱ Sessione picker scaduta — rilancia /evaluate.")
         return
 
     try:
-        chosen_idx = int(idx_str)
+        chosen_idx = int(choice)
     except ValueError:
         await q.edit_message_text("⚠ Indice non valido.")
         return
@@ -590,12 +551,10 @@ async def evaluate_pick_callback(update: Update, context: ContextTypes.DEFAULT_T
         await q.edit_message_text("⚠ Indice fuori range.")
         return
 
-    # Show a quick "computing" message to mirror the original UX, then continue.
     await q.edit_message_text(
         f"🔍 Valuto *{results[chosen_idx].name}*...",
         parse_mode="Markdown",
     )
-
     # User-confirmed pick → confidence is effectively 1.0 from here on.
     await _finish_evaluate(
         q.message, context, results, chosen_idx, 1.0,

@@ -31,8 +31,8 @@ from src.bot.handlers.advanced import (
 )
 from src.bot.handlers.stats import stats_command, target_command, backup_command
 from src.bot.handlers.evaluate import evaluate_command, evaluate_pick_callback
-from src.bot.handlers.offer import offer_command
-from src.bot.handlers.link_analyzer import link_handler
+from src.bot.handlers.offer import offer_command, offer_pick_callback
+from src.bot.handlers.link_analyzer import link_handler, link_pick_callback
 from src.bot.handlers.user_cmds import me_command, settings_command, settings_pref_callback
 from src.scheduler.jobs import setup_scheduler
 
@@ -373,6 +373,8 @@ def create_bot() -> Application:
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CallbackQueryHandler(settings_pref_callback, pattern=r"^pref:"))
     app.add_handler(CallbackQueryHandler(evaluate_pick_callback, pattern=r"^eval_pick:"))
+    app.add_handler(CallbackQueryHandler(offer_pick_callback, pattern=r"^offer_pick:"))
+    app.add_handler(CallbackQueryHandler(link_pick_callback, pattern=r"^link_pick:"))
     app.add_handler(CommandHandler("target", target_command))
     app.add_handler(CommandHandler("backup", backup_command))
     app.add_handler(CommandHandler("evaluate", evaluate_command))

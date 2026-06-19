@@ -43,6 +43,13 @@ from src.utils.llm_parser import (
 )
 from src.utils.query_parser import parse_card_query
 from src.utils.search_match import best_match_with_confidence, confidence_emoji
+from src.bot.picker import (
+    build_picker_keyboard,
+    discard_picker_state,
+    parse_picker_callback,
+    retrieve_picker_state,
+    stash_picker_state,
+)
 from src.utils.currency import get_exchange_rates, usd_to_eur
 from src.utils.price_aggregator import aggregate_prices, format_aggregated_prices
 from src.utils.buy_links import get_buy_links
@@ -298,8 +305,6 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
     )
 
-    rates = await get_exchange_rates()
-
     # Parse the listing title for set / condition / variant hints. The set is
     # the most useful signal here — it lets us narrow PriceCharting and feed
     # CardTrader an exact `expansion_code` for the cached fast path.
@@ -317,16 +322,18 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         search_query = _simplify_title(title)
 
-    results = await pc.search(search_query, max_results=3)
+    # Ask for 5 results so the picker has enough candidates when confidence
+    # is borderline. best_match still picks the top one for the auto-path.
+    results = await pc.search(search_query, max_results=5)
 
     if not results:
         # Try with shorter query
         words = search_query.split()[:3]
-        results = await pc.search(" ".join(words), max_results=3)
+        results = await pc.search(" ".join(words), max_results=5)
 
     if not results and title_parsed.expansion:
         # Last resort: search by set alone, then let best_match disambiguate.
-        results = await pc.search(title_parsed.expansion.name_en, max_results=3)
+        results = await pc.search(title_parsed.expansion.name_en, max_results=5)
 
     if not results:
         await msg.edit_text(
@@ -342,6 +349,32 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # /evaluate (card number bonus, extra-token penalty, etc.).
     search_text = title
     best_idx, match_confidence = best_match_with_confidence(search_text, results)
+
+    # Picker: same threshold as /evaluate and /offer.
+    if match_confidence < 0.6 and len(results) >= 2:
+        await _show_link_picker(
+            msg, context, results[:5], best_idx,
+            listing=listing,
+            expansion_code=expansion_code,
+        )
+        return
+
+    await _finish_link(
+        msg, context, results, best_idx, match_confidence,
+        listing=listing,
+        expansion_code=expansion_code,
+    )
+
+
+async def _finish_link(
+    msg, context, results, best_idx, match_confidence,
+    *, listing, expansion_code,
+):
+    """Continue link analysis with a chosen product. Reused by auto-pick + picker."""
+    title = listing["title"]
+    price_eur = listing["price_eur"]
+    platform = listing["platform"]
+    rates = await get_exchange_rates()
     product_result = results[best_idx]
 
     # Save product
@@ -633,3 +666,71 @@ def _simplify_title(title: str) -> str:
     # Take first 5 meaningful words
     words = [w for w in result.split() if len(w) > 1][:5]
     return " ".join(words) if words else title[:30]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Picker for the /link analyzer — same UX as /evaluate and /offer.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_PICKER_NAMESPACE = "link"
+_PICKER_PREFIX = "link_pick"
+
+
+async def _show_link_picker(
+    msg, context, candidates, suggested_idx,
+    *, listing, expansion_code,
+):
+    token = stash_picker_state(context, _PICKER_NAMESPACE, {
+        "results": candidates,
+        "listing": listing,
+        "expansion_code": expansion_code,
+    })
+    kb = build_picker_keyboard(candidates, suggested_idx, _PICKER_PREFIX, token)
+    title = listing.get("title", "annuncio")[:60]
+    await msg.edit_text(
+        f"❓ *Match incerto per l'annuncio*\n_{title}_\n\n"
+        f"Trovati più candidati su PriceCharting — scegli quello giusto:",
+        parse_mode="Markdown",
+        reply_markup=kb,
+    )
+
+
+async def link_pick_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """CallbackQueryHandler entry-point for `link_pick:<token>:<idx|cancel>`."""
+    q = update.callback_query
+    await q.answer()
+    token, choice = parse_picker_callback(q.data)
+    if not token or choice is None:
+        await q.edit_message_text("⚠ Callback malformato.")
+        return
+
+    if choice == "cancel":
+        await q.edit_message_text("❌ Analisi annullata.")
+        discard_picker_state(context, _PICKER_NAMESPACE, token)
+        return
+
+    state = retrieve_picker_state(context, _PICKER_NAMESPACE, token)
+    if state is None:
+        await q.edit_message_text("⏱ Sessione picker scaduta — rimanda il link.")
+        return
+
+    try:
+        chosen_idx = int(choice)
+    except ValueError:
+        await q.edit_message_text("⚠ Indice non valido.")
+        return
+
+    results = state["results"]
+    if not (0 <= chosen_idx < len(results)):
+        await q.edit_message_text("⚠ Indice fuori range.")
+        return
+
+    await q.edit_message_text(
+        f"🔗 Analizzo *{results[chosen_idx].name}*...",
+        parse_mode="Markdown",
+    )
+    await _finish_link(
+        q.message, context, results, chosen_idx, 1.0,
+        listing=state["listing"],
+        expansion_code=state["expansion_code"],
+    )
