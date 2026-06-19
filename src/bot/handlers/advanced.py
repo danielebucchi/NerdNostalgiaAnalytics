@@ -12,6 +12,7 @@ from sqlalchemy import select
 from src.bot.handlers.signal import get_or_fetch_prices
 from src.collectors.pricecharting import PriceChartingCollector
 from src.collectors.reddit import search_hype, calculate_hype_score
+from src.utils.llm_parser import enrich_hype_with_sentiment
 from src.collectors.vinted import VintedCollector
 from src.analysis.prediction import predict_prices, format_prediction
 from src.analysis.correlation import find_correlated_products
@@ -138,13 +139,23 @@ async def hype_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = await update.message.reply_text(f"🔍 Cerco hype su Reddit per '{query}'...")
 
     posts = await search_hype(query)
-    hype_score, description = calculate_hype_score(posts)
+    raw_score, raw_description = calculate_hype_score(posts)
+    hype = await enrich_hype_with_sentiment(posts, raw_score, raw_description)
 
     lines = [
         f"📡 *Hype Monitor: '{query}'*\n",
-        f"Score: *{hype_score}/100*",
-        f"{description}\n",
+        f"Score: *{hype.score}/100*"
+        + (f" _(raw: {hype.raw_score})_" if hype.score != hype.raw_score else ""),
+        f"{hype.description}\n",
     ]
+    if hype.has_sentiment:
+        if hype.sentiment >= 0.3:
+            sent_emoji = "📈"
+        elif hype.sentiment <= -0.3:
+            sent_emoji = "📉"
+        else:
+            sent_emoji = "➡️"
+        lines.append(f"{sent_emoji} _Sentiment ({hype.sentiment:+.2f}):_ {hype.summary}\n")
 
     if posts:
         lines.append(f"*Top post recenti ({len(posts)}):*\n")

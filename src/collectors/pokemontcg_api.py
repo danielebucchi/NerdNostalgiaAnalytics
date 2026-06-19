@@ -3,15 +3,27 @@ Pokemon TCG API collector.
 Free API, no auth required. Provides:
 - TCGPlayer prices (USA market)
 - Cardmarket prices (EU market) including trend price and avg sell price
+
+Also opportunistically records the official ptcgo set code into the local
+expansion registry — Cardmarket's URL slugs and PTCGO/Live both use this short
+code, so caching it speeds up future cross-source lookups.
 """
 import logging
+import re
 from dataclasses import dataclass
 
 import httpx
 
+from src.utils.expansions import get_registry
+
 logger = logging.getLogger(__name__)
 
 API_BASE = "https://api.pokemontcg.io/v2"
+
+# Cardmarket URLs look like .../Pokemon/Products/Singles/<set-slug>/<card-slug>
+_CM_SET_SLUG = re.compile(r"cardmarket\.com/[^/]+/Pokemon/Products/Singles/([^/]+)/", re.IGNORECASE)
+# TCGPlayer product URLs look like .../product/<numeric-id>/...
+_TCG_PRODUCT_ID = re.compile(r"tcgplayer\.com/product/(\d+)", re.IGNORECASE)
 
 
 @dataclass
@@ -65,6 +77,7 @@ async def search_card_prices(query: str, max_results: int = 5) -> list[CardPrice
         return []
 
     results = []
+    registry = get_registry()
     for card in data.get("data", []):
         tcg_data = card.get("tcgplayer", {})
         cm_data = card.get("cardmarket", {})
@@ -85,9 +98,12 @@ async def search_card_prices(query: str, max_results: int = 5) -> list[CardPrice
                 variant = var_name
                 break
 
+        set_obj = card.get("set", {}) or {}
+        await _record_set_codes(registry, set_obj, tcg_data.get("url"), cm_data.get("url"))
+
         results.append(CardPrices(
             name=card.get("name", ""),
-            set_name=card.get("set", {}).get("name", ""),
+            set_name=set_obj.get("name", ""),
             number=card.get("number", ""),
             tcg_low=tcg_low,
             tcg_mid=tcg_mid,
@@ -102,6 +118,36 @@ async def search_card_prices(query: str, max_results: int = 5) -> list[CardPrice
         ))
 
     return results
+
+
+async def _record_set_codes(registry, set_obj: dict, tcg_url: str | None, cm_url: str | None) -> None:
+    """Persist Pokemon TCG API set codes into our expansion registry.
+
+    The Pokemon TCG API set.id (e.g. `sv3pt5`) is our canonical code, so we use
+    it as the registry key. We then record:
+      - `ptcgo_code` from set.ptcgoCode (the official Pokémon TCG abbreviation;
+        Cardmarket and PTCGL use the same letters in their URL slugs)
+      - `cardmarket_code` from the URL slug of any card's cardmarket.url
+      - `tcgplayer_code` from the product-id segment of any card's tcgplayer.url
+    Each call is idempotent and silently no-ops when the set isn't in the
+    registry — so cards from new/unlisted sets won't break us."""
+    set_id = set_obj.get("id")
+    if not set_id:
+        return
+    ptcgo = set_obj.get("ptcgoCode")
+    if ptcgo:
+        await registry.record_external_code(set_id, "ptcgo_code", ptcgo)
+    if cm_url:
+        m = _CM_SET_SLUG.search(cm_url)
+        if m:
+            await registry.record_external_code(set_id, "cardmarket_code", m.group(1))
+    if tcg_url:
+        m = _TCG_PRODUCT_ID.search(tcg_url)
+        if m:
+            # Note: this is a product-level ID, not a set-level one. We store
+            # the most recent product-id seen for the set — useful as a known
+            # "anchor" product when browsing TCGPlayer for that set.
+            await registry.record_external_code(set_id, "tcgplayer_code", m.group(1))
 
 
 async def get_card_prices(name: str, set_name: str | None = None) -> CardPrices | None:

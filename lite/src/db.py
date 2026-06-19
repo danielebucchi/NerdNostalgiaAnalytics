@@ -5,7 +5,10 @@ import json
 import os
 from pathlib import Path
 
-DB_FILE = Path("watchlist.json")
+# LITE_DB_PATH lets us redirect the JSON DB to a mounted volume in Docker
+# without rebuilding the image. Defaults to the current working directory
+# so local development keeps working unchanged.
+DB_FILE = Path(os.getenv("LITE_DB_PATH", "watchlist.json"))
 
 
 def _load() -> dict:

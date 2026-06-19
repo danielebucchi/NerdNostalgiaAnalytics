@@ -9,11 +9,42 @@ from src.db.database import async_session
 from src.db.models import Product
 from src.utils.buy_links import get_buy_links
 from src.utils.currency import get_exchange_rates, format_price
+from src.utils.llm_parser import is_configured as llm_configured, parse_with_llm_fallback
+from src.utils.query_parser import parse_card_query
 
 from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 collector = PriceChartingCollector()
+
+
+def _set_banner(parsed) -> str:
+    """One-line header announcing the matched expansion. Empty string when
+    no expansion was detected."""
+    if not parsed.expansion:
+        return ""
+    exp = parsed.expansion
+    bits = [f"📦 *Set rilevato:* {exp.name_en}"]
+    if exp.name_it and exp.name_it != exp.name_en:
+        bits.append(f"_({exp.name_it})_")
+    if exp.release_date:
+        bits.append(f"· {exp.release_date}")
+    if exp.total_cards:
+        bits.append(f"· {exp.total_cards} carte")
+    return " ".join(bits)
+
+
+def _refined_query(parsed, fallback: str) -> str:
+    """Rewrite the raw user query into something PriceCharting matches better.
+    If the user typed an expansion in Italian (or via alias), we substitute the
+    English name; otherwise we pass the original query through."""
+    if not parsed.expansion:
+        return fallback
+    parts = []
+    if parsed.name:
+        parts.append(parsed.name)
+    parts.append(parsed.expansion.name_en)
+    return " ".join(parts)
 
 
 async def _save_and_get_product(r) -> Product:
@@ -42,21 +73,50 @@ async def _save_and_get_product(r) -> Product:
 
 
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /search <query> command."""
+    """Handle /search <query> command.
+
+    Parses the query for set + condition + variant hints; if a known expansion
+    is mentioned (in IT or EN), rewrites the search to use the canonical English
+    set name so PriceCharting matches better. When the query is JUST a set name
+    (e.g. "/search ex rubino zaffiro"), surfaces the set itself + top cards
+    from it. Falls back to the LLM only when the rule-based parser is unsure
+    and GEMINI_API_KEY is configured."""
     if not context.args:
-        await update.message.reply_text("Uso: /search <nome prodotto>\nEs: /search charizard base set")
+        await update.message.reply_text(
+            "Uso: /search <nome prodotto o set>\n"
+            "Es: /search charizard base set\n"
+            "Es: /search ex rubino zaffiro  (mostra il set + carte top)"
+        )
         return
 
-    query = " ".join(context.args)
-    await update.message.reply_text(f"🔍 Cerco '{query}'...")
+    raw_query = " ".join(context.args)
+    await update.message.reply_text(f"🔍 Cerco '{raw_query}'...")
 
-    results = await collector.search(query)
+    # Parse query — rule-based first, LLM fallback only when the rule-based
+    # extracts almost nothing AND Gemini is configured.
+    parsed = parse_card_query(raw_query)
+    if parsed.confidence < 0.4 and llm_configured():
+        try:
+            parsed = await parse_with_llm_fallback(raw_query)
+        except Exception as e:
+            logger.warning(f"LLM fallback failed for {raw_query!r}: {e}")
+
+    pc_query = _refined_query(parsed, raw_query)
+    results = await collector.search(pc_query)
 
     if not results:
-        await update.message.reply_text("Nessun risultato trovato. Prova con un termine diverso.")
+        # If the refined query failed but we DID detect an expansion, retry
+        # with just the English set name — broader net.
+        if parsed.expansion and pc_query != parsed.expansion.name_en:
+            results = await collector.search(parsed.expansion.name_en)
+
+    if not results:
+        msg = "Nessun risultato trovato."
+        if parsed.expansion:
+            msg += f"\nSet rilevato: {parsed.expansion.name_en} (codice `{parsed.expansion.code}`)."
+        await update.message.reply_text(msg, parse_mode="Markdown")
         return
 
-    # Save products to DB and collect their IDs
     products_data = []
     for r in results[:10]:
         product = await _save_and_get_product(r)
@@ -66,8 +126,22 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "current_price": r.current_price,
         })
 
-    text = f"Trovati {len(results)} risultati per '{query}'.\nSeleziona un prodotto:"
-    await update.message.reply_text(text, reply_markup=search_result_keyboard(products_data))
+    # Build header. When the user typed only a set name, frame it as
+    # "carte del set"; otherwise frame as a normal search result.
+    header_lines = []
+    banner = _set_banner(parsed)
+    if banner:
+        header_lines.append(banner)
+    if parsed.is_pure_set_query:
+        header_lines.append(f"\nTop {len(products_data)} carte del set:")
+    else:
+        header_lines.append(f"\nTrovati {len(results)} risultati per '{raw_query}'.\nSeleziona un prodotto:")
+
+    await update.message.reply_text(
+        "\n".join(header_lines),
+        parse_mode="Markdown",
+        reply_markup=search_result_keyboard(products_data),
+    )
 
 
 async def select_product_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):

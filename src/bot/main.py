@@ -5,8 +5,9 @@ import traceback
 from telegram import Update
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
-    ConversationHandler, MessageHandler, filters, ContextTypes,
+    ConversationHandler, MessageHandler, TypeHandler, filters, ContextTypes,
 )
+from src.bot.middleware.user_context import user_context_middleware
 
 from src.config import settings
 from src.db.database import init_db
@@ -29,9 +30,10 @@ from src.bot.handlers.advanced import (
     correlate_command, compare_command, watchvinted_command, photo_handler,
 )
 from src.bot.handlers.stats import stats_command, target_command, backup_command
-from src.bot.handlers.evaluate import evaluate_command
+from src.bot.handlers.evaluate import evaluate_command, evaluate_pick_callback
 from src.bot.handlers.offer import offer_command
 from src.bot.handlers.link_analyzer import link_handler
+from src.bot.handlers.user_cmds import me_command, settings_command, settings_pref_callback
 from src.scheduler.jobs import setup_scheduler
 
 logger = logging.getLogger(__name__)
@@ -95,14 +97,16 @@ Invia una *foto* di una carta e il bot la riconosce e ti da' il prezzo.
 
 💰 *COMPRA: VALUTA E OFFRI*
 
-/evaluate <nome> <prezzo in €>
+/evaluate <nome> <prezzo in €> [condizione]
   Qualcuno ti offre qualcosa? Scopri se conviene.
   Analizza prezzo mercato, Vinted, segnale tecnico,
   previsione, hype e margini di rivendita.
   Verdetto: da AFFARE! a NON CONVIENE.
   _Es: /evaluate charizard base set 350_
+  _Es: /evaluate charizard 200 psa10_
+  _Es: /evaluate charizard 80 nm_
 
-/offer <nome> [margine%]
+/offer <nome> [condizione] [margine%]
   Calcola quanto offrire al massimo.
   Considera i prezzi reali su Vinted e PriceCharting,
   le commissioni di ogni piattaforma e il trend.
@@ -110,11 +114,23 @@ Invia una *foto* di una carta e il bot la riconosce e ti da' il prezzo.
   Default: 30% di margine.
   _Es: /offer charizard base set_
   _Es: /offer pokemon emerald 40_
+  _Es: /offer charizard psa10 40_
+  _Es: /offer charizard lp_
 
 🔗 *Incolla un link* di un annuncio
   Vinted, eBay, Subito, Cardmarket — il bot legge
-  titolo e prezzo, li confronta col mercato e ti dice
-  se conviene + quanto offrire.
+  titolo, prezzo e condizione, li confronta col
+  mercato e ti dice se conviene + quanto offrire.
+
+🎴 *Condizioni carte supportate*
+  • *Graded*: PSA / BGS / CGC / SGC / Beckett 1–10
+    (anche mezzi punti: psa9.5, bgs9,5)
+  • *Raw*: NM (Near Mint) > EX (Excellent) >
+    GD (Good) > LP (Light Played) > PL (Played) >
+    PO (Poor)
+  Riconosce anche frasi: "near mint", "lightly played",
+  "perfetto stato", "carta rovinata", ecc.
+  Per i videogiochi: loose / cib / sealed / graded.
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
@@ -124,6 +140,8 @@ Invia una *foto* di una carta e il bot la riconosce e ti da' il prezzo.
   Cerca affari su Vinted: inserzioni sotto il prezzo
   di mercato, con percentuale di sconto.
   Filtra automaticamente fake e inserzioni sospette.
+  Mostra il badge condizione accanto a ogni carta
+  (es. `💎 PSA 10`, `🟢 NM`, `🟠 PL`).
   _Es: /deals charizard_
 
 /vinted <nome>
@@ -269,7 +287,9 @@ async def start_command(update, context):
         f"*Come iniziare:*\n"
         f"🔍 /search charizard — cerca un prodotto\n"
         f"💰 /evaluate charizard base set 350 — ti offrono qualcosa? Valuta se conviene\n"
+        f"   _puoi aggiungere la condizione: /evaluate charizard 200 psa10_\n"
         f"🧮 /offer charizard base set — quanto offrire\n"
+        f"   _con condizione: /offer charizard nm 40_\n"
         f"🔗 Incolla un *link* Vinted/eBay/Subito — analisi automatica\n"
         f"📷 Manda una *foto* di una carta — riconoscimento\n\n"
         f"📖 /help\\_full per la guida completa di tutti i comandi"
@@ -316,6 +336,11 @@ async def post_init(application):
 def create_bot() -> Application:
     app = Application.builder().token(settings.telegram_bot_token).post_init(post_init).build()
 
+    # Middleware (group=-1 runs before every other handler): registers the
+    # Telegram user, bumps last_seen, enforces whitelist / is_blocked. The
+    # resolved User is stashed in context.user_data["user"] for downstream use.
+    app.add_handler(TypeHandler(Update, user_context_middleware), group=-1)
+
     # Command handlers
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
@@ -344,6 +369,10 @@ def create_bot() -> Application:
     app.add_handler(CommandHandler("compare", compare_command))
     app.add_handler(CommandHandler("watchvinted", watchvinted_command))
     app.add_handler(CommandHandler("stats", stats_command))
+    app.add_handler(CommandHandler("me", me_command))
+    app.add_handler(CommandHandler("settings", settings_command))
+    app.add_handler(CallbackQueryHandler(settings_pref_callback, pattern=r"^pref:"))
+    app.add_handler(CallbackQueryHandler(evaluate_pick_callback, pattern=r"^eval_pick:"))
     app.add_handler(CommandHandler("target", target_command))
     app.add_handler(CommandHandler("backup", backup_command))
     app.add_handler(CommandHandler("evaluate", evaluate_command))

@@ -7,8 +7,9 @@ from telegram.ext import ContextTypes
 from sqlalchemy import select
 
 from src.collectors.pricecharting import PriceChartingCollector
-from src.collectors.vinted import VintedCollector
+from src.collectors.vinted import VintedCollector, VintedListing
 from src.db.database import async_session
+from src.utils.condition import card_condition_emoji
 
 
 def _esc(text: str) -> str:
@@ -16,6 +17,18 @@ def _esc(text: str) -> str:
     for ch in ['*', '_', '`', '[', ']', '(', ')']:
         text = text.replace(ch, '')
     return text
+
+
+def _cond_badge(listing: VintedListing) -> str:
+    """Compact ` 💎 PSA 10` / ` 🟢 NM` suffix; empty when no signal detected."""
+    cc = listing.card_condition
+    if not cc.is_known:
+        return ""
+    if cc.is_graded:
+        return f" {card_condition_emoji(cc)} {cc.grading_company} {cc.grade:g}"
+    return f" {card_condition_emoji(cc)} {cc.raw_grade}"
+
+
 from src.db.models import Product
 
 logger = logging.getLogger(__name__)
@@ -82,12 +95,13 @@ async def _deals_search_page(message, query: str, page: int, context):
         lines = [f"🛒 *Vinted: '{query}'* (pag. {page}, {len(filtered)} totali)\n"]
 
     for l in page_items:
+        badge = _cond_badge(l)
         if market_eur and l.price_eur < market_eur:
             discount = ((market_eur - l.price_eur) / market_eur) * 100
             emoji = "🔥🔥" if discount > 50 else "🔥" if discount > 30 else "💰"
-            lines.append(f"{emoji} *€{l.price_eur:.2f}* (-{discount:.0f}%) — [{_esc(l.title[:45])}]({l.url})")
+            lines.append(f"{emoji} *€{l.price_eur:.2f}* (-{discount:.0f}%){badge} — [{_esc(l.title[:45])}]({l.url})")
         else:
-            lines.append(f"€{l.price_eur:.2f} — [{_esc(l.title[:45])}]({l.url})")
+            lines.append(f"€{l.price_eur:.2f}{badge} — [{_esc(l.title[:45])}]({l.url})")
 
     # Store query for pagination
     query_hash = hashlib.md5(f"deals_{query}".encode()).hexdigest()[:8]
@@ -155,12 +169,13 @@ async def deals_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         lines = [f"🛒 *Vinted: '{query}'* (pag. {page}, {len(filtered)} totali)\n"]
 
     for l in page_items:
+        badge = _cond_badge(l)
         if market_eur and l.price_eur < market_eur:
             discount = ((market_eur - l.price_eur) / market_eur) * 100
             emoji = "🔥🔥" if discount > 50 else "🔥" if discount > 30 else "💰"
-            lines.append(f"{emoji} *€{l.price_eur:.2f}* (-{discount:.0f}%) — [{_esc(l.title[:45])}]({l.url})")
+            lines.append(f"{emoji} *€{l.price_eur:.2f}* (-{discount:.0f}%){badge} — [{_esc(l.title[:45])}]({l.url})")
         else:
-            lines.append(f"€{l.price_eur:.2f} — [{_esc(l.title[:45])}]({l.url})")
+            lines.append(f"€{l.price_eur:.2f}{badge} — [{_esc(l.title[:45])}]({l.url})")
 
     buttons = []
     if page > 1:
@@ -221,7 +236,7 @@ async def _vinted_search_page(message, query: str, page: int, context):
 
     lines = [f"🛒 *Vinted: '{query}'* (pag. {page}, {len(filtered)} totali)\n"]
     for l in page_items:
-        lines.append(f"€{l.price_eur:.2f} — [{_esc(l.title[:50])}]({l.url})")
+        lines.append(f"€{l.price_eur:.2f}{_cond_badge(l)} — [{_esc(l.title[:50])}]({l.url})")
 
     # Store query in context for pagination
     # Use a short hash to keep callback_data under 64 bytes
@@ -281,7 +296,7 @@ async def vinted_page_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     lines = [f"🛒 *Vinted: '{query}'* (pag. {page}, {len(filtered)} totali)\n"]
     for l in page_items:
-        lines.append(f"€{l.price_eur:.2f} — [{_esc(l.title[:50])}]({l.url})")
+        lines.append(f"€{l.price_eur:.2f}{_cond_badge(l)} — [{_esc(l.title[:50])}]({l.url})")
 
     buttons = []
     if page > 1:

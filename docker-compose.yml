@@ -1,8 +1,54 @@
+# docker compose up -d        # main bot only
+# docker compose --profile lite up -d   # main + lite bot
+# docker compose logs -f bot   # tail main logs
 services:
   bot:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nerd-nostalgia-bot:latest
+    container_name: nerd-nostalgia-bot
     env_file: .env
+    environment:
+      # Override the default DATABASE_URL so SQLite lives in a mounted volume.
+      # Four slashes = absolute path; sqlite+aiosqlite:// + /app/data/...
+      - DATABASE_URL=sqlite+aiosqlite:////app/data/nerd_nostalgia.db
+      - TZ=Europe/Rome
     volumes:
+      # Persistent SQLite + any runtime cache.
       - ./data:/app/data
-      - ./nerd_nostalgia.db:/app/nerd_nostalgia.db
+      # expansions.json is the auto-populated registry — must persist + share
+      # with host so writes survive container restarts and show up in git diff.
+      - ./src/data:/app/src/data
+    ports:
+      - "9000:9000"
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  bot-lite:
+    profiles: ["lite"]
+    build:
+      context: .
+      dockerfile: Dockerfile.lite
+    image: nerd-nostalgia-lite:latest
+    container_name: nerd-nostalgia-lite
+    env_file: .env
+    environment:
+      # The lite bot reads TELEGRAM_BOT_TOKEN — but the main bot uses the same
+      # var name with a different token. Compose maps the lite token here.
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_LITE}
+      - LITE_DB_PATH=/app/lite/data/watchlist.json
+      - CHECK_INTERVAL_MINUTES=${CHECK_INTERVAL_MINUTES:-30}
+      - TZ=Europe/Rome
+    volumes:
+      - ./lite-data:/app/lite/data
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

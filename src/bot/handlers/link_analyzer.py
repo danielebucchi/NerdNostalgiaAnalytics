@@ -27,7 +27,22 @@ from src.collectors.twentysixbits import get_26bits_price
 from src.collectors.vinted import VintedCollector
 from src.db.database import async_session
 from src.db.models import Product, ProductCategory
-from src.utils.condition import detect_condition, get_condition_price, CONDITION_EMOJI
+from src.utils.condition import (
+    CONDITION_EMOJI,
+    CardCondition,
+    card_condition_emoji,
+    card_condition_to_pc_bucket,
+    detect_card_condition,
+    detect_condition,
+    detect_videogame_condition,
+    get_condition_price,
+)
+from src.utils.llm_parser import (
+    detect_bundle,
+    detect_videogame_condition_with_llm_fallback,
+)
+from src.utils.query_parser import parse_card_query
+from src.utils.search_match import best_match_with_confidence, confidence_emoji
 from src.utils.currency import get_exchange_rates, usd_to_eur
 from src.utils.price_aggregator import aggregate_prices, format_aggregated_prices
 from src.utils.buy_links import get_buy_links
@@ -285,14 +300,33 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     rates = await get_exchange_rates()
 
-    # Search on PriceCharting
-    search_query = _simplify_title(title)
+    # Parse the listing title for set / condition / variant hints. The set is
+    # the most useful signal here — it lets us narrow PriceCharting and feed
+    # CardTrader an exact `expansion_code` for the cached fast path.
+    title_parsed = parse_card_query(title)
+    expansion_code: str | None = title_parsed.expansion.code if title_parsed.expansion else None
+
+    # Search on PriceCharting. Prefer a query refined with the canonical EN set
+    # name when we detected one; fall back to the noise-stripped title.
+    if title_parsed.expansion:
+        bits = []
+        if title_parsed.name:
+            bits.append(title_parsed.name)
+        bits.append(title_parsed.expansion.name_en)
+        search_query = " ".join(bits)
+    else:
+        search_query = _simplify_title(title)
+
     results = await pc.search(search_query, max_results=3)
 
     if not results:
         # Try with shorter query
         words = search_query.split()[:3]
         results = await pc.search(" ".join(words), max_results=3)
+
+    if not results and title_parsed.expansion:
+        # Last resort: search by set alone, then let best_match disambiguate.
+        results = await pc.search(title_parsed.expansion.name_en, max_results=3)
 
     if not results:
         await msg.edit_text(
@@ -304,7 +338,11 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    product_result = results[0]
+    # Match the listing against the result list — same disambiguation as
+    # /evaluate (card number bonus, extra-token penalty, etc.).
+    search_text = title
+    best_idx, match_confidence = best_match_with_confidence(search_text, results)
+    product_result = results[best_idx]
 
     # Save product
     async with async_session() as session:
@@ -328,19 +366,37 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- DETECT CONDITION ---
     listing_text = f"{title} {listing.get('description', '')}"
-    detected_condition = detect_condition(listing_text)
-
-    # For video games on Vinted/Subito, default to Ungraded (loose) if unknown
-    # Most second-hand game listings are just the cartridge/disc
     is_videogame = product.category == ProductCategory.VIDEOGAME
-    if detected_condition == "Unknown" and is_videogame:
-        detected_condition = "Ungraded"
+    is_card = product.category in (
+        ProductCategory.POKEMON, ProductCategory.MAGIC, ProductCategory.YUGIOH,
+    )
 
-    # For cards on Vinted, default to Ungraded if unknown
-    if detected_condition == "Unknown" and platform in ("Vinted", "Subito"):
-        detected_condition = "Ungraded"
+    # Bundle/lot pre-check on the full listing text — used to warn the user
+    # when the listing is a collection, since per-item comparisons are noise.
+    bundle = await detect_bundle(listing_text)
 
-    cond_emoji = CONDITION_EMOJI.get(detected_condition, "")
+    # Cards use the TCG-specific scale (graded PSA/BGS/... or raw NM→PO).
+    card_cond: CardCondition | None = None
+    if is_card:
+        card_cond = detect_card_condition(listing_text)
+        if not card_cond.is_known:
+            # No signal on a card listing → assume raw Near Mint (the typical
+            # default sellers don't bother mentioning).
+            card_cond = CardCondition(raw_grade="NM")
+        detected_condition = card_condition_to_pc_bucket(card_cond)
+        cond_emoji = card_condition_emoji(card_cond)
+        cond_display = card_cond.display
+    else:
+        # Rule-based first, LLM fallback when title + description don't match
+        # any keyword (idiomatic phrasing like "ho perso il libretto").
+        vg_cond = await detect_videogame_condition_with_llm_fallback(listing_text)
+        detected_condition = vg_cond.label
+        # On Vinted/Subito a missing signal almost always means a used/loose copy
+        # — the seller wouldn't mention "cartuccia" for their only N64 game.
+        if detected_condition == "Unknown" and (is_videogame or platform in ("Vinted", "Subito")):
+            detected_condition = "Ungraded"
+        cond_emoji = CONDITION_EMOJI.get(detected_condition, "")
+        cond_display = vg_cond.display if vg_cond.is_known else detected_condition
 
     # --- COLLECT ALL PRICES ---
     # 1. PriceCharting (by condition)
@@ -366,9 +422,6 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 2. Pokemon TCG API (Cardmarket + TCGPlayer) — only for cards
     cm_trend = cm_avg_sell = cm_low = tcg_market = None
-    is_card = product.category in (
-        ProductCategory.POKEMON, ProductCategory.MAGIC, ProductCategory.YUGIOH,
-    )
     ct_median = ct_nm_min = None
     ct_offers = 0
     if is_card:
@@ -388,12 +441,25 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif product.category == ProductCategory.YUGIOH:
                 game_name = "yugioh"
             try:
-                ct_data = await cardtrader.get_prices(search_query, game=game_name,
-                                                      set_name=product.set_name)
+                ct_data = await cardtrader.get_prices(
+                    search_query, game=game_name,
+                    set_name=product.set_name,
+                    # Skip CardTrader's /expansions lookup when we already
+                    # know the TCG-API code → the registry hits the cached
+                    # cardtrader_id directly.
+                    expansion_code=expansion_code or (product.set_name and None),
+                )
                 if ct_data:
-                    ct_median = ct_data.median_price_eur
-                    ct_nm_min = ct_data.near_mint_min_eur
                     ct_offers = ct_data.total_offers
+                    # If we know the card condition, narrow the median/min to
+                    # offers matching that condition or better. Otherwise keep
+                    # the cross-condition aggregates.
+                    if card_cond and card_cond.is_known:
+                        ct_median = ct_data.median_for_condition(card_cond) or ct_data.median_price_eur
+                        ct_nm_min = ct_data.min_for_condition(card_cond) or ct_data.near_mint_min_eur
+                    else:
+                        ct_median = ct_data.median_price_eur
+                        ct_nm_min = ct_data.near_mint_min_eur
             except Exception as e:
                 logger.error(f"CardTrader fetch failed: {e}")
 
@@ -457,13 +523,22 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     analysis = analyze(df) if df is not None and len(df) >= 6 else None
 
     # --- VERDICT ---
+    match_em = confidence_emoji(match_confidence)
     lines = [
         f"🔗 *ANALISI ANNUNCIO*\n",
         f"📦 {title}",
         f"🏪 {platform}: *€{price_eur:.2f}*",
-        f"🔍 Match: {product.name}",
-        f"{cond_emoji} Condizione: *{detected_condition}*\n",
+        f"{match_em} Match: *{product.name}* _(confidence {match_confidence:.0%})_",
+        f"{cond_emoji} Condizione: *{cond_display}*\n",
     ]
+    if match_confidence < 0.35:
+        lines.insert(4, "⚠ _Match incerto — il prodotto sopra potrebbe non corrispondere all'annuncio._")
+
+    # Bundle/lot warning — the per-item comparisons below are unreliable.
+    if bundle.is_bundle:
+        bundle_line = f"📦 *LOTTO/BUNDLE rilevato:* {bundle.display_summary or bundle.notes or 'multipli pezzi'}"
+        lines.append(bundle_line)
+        lines.append("⚠ Le metriche per-pezzo sono indicative — confronta manualmente.\n")
 
     # Aggregated fair value
     lines.append(format_aggregated_prices(agg))

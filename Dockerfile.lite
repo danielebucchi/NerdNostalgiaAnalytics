@@ -1,0 +1,27 @@
+# Lite bot image: minimal price-alert fork. No OCR, no ML, no web — much smaller.
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    TZ=Europe/Rome
+
+WORKDIR /app/lite
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        tzdata \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY lite/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY lite/src/ ./src/
+COPY lite/main.py ./
+
+# Writable persistence dir for the JSON DB.
+RUN mkdir -p /app/lite/data
+
+CMD ["python", "main.py"]

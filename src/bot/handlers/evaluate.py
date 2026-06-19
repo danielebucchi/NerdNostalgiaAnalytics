@@ -4,8 +4,10 @@ Combina: prezzo di mercato, segnale tecnico, previsione, hype, margini di rivend
 """
 import logging
 import re
+import secrets
+import time
 
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from sqlalchemy import select
@@ -15,12 +17,27 @@ from src.analysis.prediction import predict_prices
 from src.bot.handlers.signal import get_or_fetch_prices
 from src.bot.handlers.stats import COMMISSIONS
 from src.collectors.pricecharting import PriceChartingCollector
-from src.utils.condition import detect_condition, get_condition_price, CONDITION_EMOJI
-from src.utils.search_match import best_match
+from src.utils.condition import (
+    CONDITION_EMOJI,
+    CardCondition,
+    card_condition_emoji,
+    card_condition_to_pc_bucket,
+    detect_card_condition,
+    detect_condition,
+    get_condition_price,
+)
+from src.utils.query_parser import parse_card_query
+from src.utils.llm_parser import (
+    detect_bundle,
+    enrich_hype_with_sentiment,
+    parse_with_llm_fallback,
+)
+from src.services.users import get_preference
+from src.utils.search_match import best_match_with_confidence, confidence_emoji
 from src.collectors.reddit import search_hype, calculate_hype_score
 from src.collectors.vinted import VintedCollector
 from src.db.database import async_session
-from src.db.models import Product
+from src.db.models import Product, ProductCategory
 from src.utils.currency import get_exchange_rates, usd_to_eur, eur_to_usd
 from src.utils.buy_links import get_buy_links
 
@@ -39,21 +56,45 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "Uso: /evaluate <nome> <prezzo€> [condizione]\n\n"
             "Es: /evaluate charizard base set 350\n"
+            "Es: /evaluate charizard 200 psa10\n"
+            "Es: /evaluate charizard 80 nm\n"
             "Es: /evaluate pokemon emerald 25 loose\n"
-            "Es: /evaluate metroid fusion 50 cib\n\n"
-            "Condizioni: loose, cib, sealed, graded\n"
-            "Default: loose (solo cartuccia/carta)"
+            "Es: /evaluate metroid fusion 50 cib\n"
+            "Es: /evaluate zelda majora 80 senza_manuale\n"
+            "Es: /evaluate mario sunshine 20 solo_custodia\n\n"
+            "Condizioni videogame: loose/solo_disco, cib, senza_manuale,\n"
+            "  solo_custodia, solo_manuale, sealed, graded/wata\n"
+            "Condizioni carte: psa10, bgs9.5, nm, ex, gd, lp, pl, po\n"
+            "Default: Ungraded / raw NM"
         )
         return
 
-    # Last arg is the price, second-to-last might be condition
+    # Last arg is the price, preceding tokens might be a condition keyword.
+    # Single-token shortcuts → canonical PriceCharting bucket label.
     condition_map = {
+        # Loose / disc-only
         "loose": "Ungraded", "sfuso": "Ungraded", "cartuccia": "Ungraded",
-        "cib": "Complete in Box", "completo": "Complete in Box", "boxed": "Complete in Box",
+        "solo_disco": "Ungraded", "solo_cartuccia": "Ungraded",
+        "disc_only": "Ungraded",
+        # Complete in box
+        "cib": "Complete in Box", "completo": "Complete in Box",
+        "boxed": "Complete in Box",
+        # Missing manual
+        "senza_manuale": "Missing Manual", "no_manual": "Missing Manual",
+        "missing_manual": "Missing Manual",
+        # Box only
+        "solo_custodia": "Box Only", "solo_scatola": "Box Only",
+        "box_only": "Box Only", "case_only": "Box Only",
+        # Manual only
+        "solo_manuale": "Manual Only", "manual_only": "Manual Only",
+        # Sealed
         "sealed": "New/Sealed", "sigillato": "New/Sealed", "nuovo": "New/Sealed",
+        # Graded (videogame grading)
         "graded": "Graded (PSA)", "psa": "Graded (PSA)",
+        "wata": "Graded (PSA)", "vga": "Graded (PSA)", "cgc": "Graded (PSA)",
     }
     forced_condition = None
+    forced_card_cond: CardCondition | None = None
 
     try:
         offered_eur = float(args[-1].replace(",", ".").replace("€", "").replace("$", ""))
@@ -62,12 +103,54 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("L'ultimo argomento deve essere il prezzo in €.")
         return
 
-    # Check if there's a condition keyword before the price
-    if len(query_args) > 1 and query_args[-1].lower() in condition_map:
+    # Try to interpret trailing tokens (up to 2) as a card condition first.
+    # That captures both single-token forms ("psa10", "nm") and two-token forms
+    # ("psa 10", "near mint", "light played").
+    if len(query_args) >= 2:
+        cc = detect_card_condition(" ".join(query_args[-2:]))
+        if cc.is_known:
+            forced_card_cond = cc
+            query_args = query_args[:-2]
+    if forced_card_cond is None and query_args:
+        cc = detect_card_condition(query_args[-1])
+        if cc.is_known:
+            forced_card_cond = cc
+            query_args = query_args[:-1]
+
+    # Fallback to the videogame keyword map. Try a 2-token tail first
+    # ("senza manuale", "solo custodia", "solo disco") then a single token.
+    if forced_card_cond is None and len(query_args) >= 3:
+        tail2 = "_".join(query_args[-2:]).lower()
+        if tail2 in condition_map:
+            forced_condition = condition_map[tail2]
+            query_args = query_args[:-2]
+    if forced_card_cond is None and forced_condition is None \
+            and len(query_args) > 1 and query_args[-1].lower() in condition_map:
         forced_condition = condition_map[query_args[-1].lower()]
         query_args = query_args[:-1]
 
+    if forced_card_cond is not None:
+        forced_condition = card_condition_to_pc_bucket(forced_card_cond)
+
     query = " ".join(query_args)
+
+    # Detect a set hint in the remaining query and rewrite the PriceCharting
+    # query to use the canonical English set name. Solves "ex rubino zaffiro
+    # charizard" → "Charizard EX Ruby & Sapphire". When the rule-based parser
+    # has low confidence (no recognized set, noisy text), we escalate to the
+    # Groq LLM so things like "mew wizards of the coast promo" get correctly
+    # mapped to Wizards Black Star Promos.
+    parsed = await parse_with_llm_fallback(query)
+    pc_query = query
+    if parsed.expansion:
+        bits = []
+        if parsed.name:
+            bits.append(parsed.name)
+        bits.append(parsed.expansion.name_en)
+        pc_query = " ".join(bits)
+    elif parsed.name and parsed.confidence > 0.5:
+        # LLM cleaned the name even without a set match → use that for search.
+        pc_query = parsed.name
 
     msg = await update.message.reply_text(
         f"🔍 Valuto se *{query}* a *€{offered_eur:.2f}* conviene...\n"
@@ -75,20 +158,80 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
     )
 
-    rates = await get_exchange_rates()
+    # Bundle/lot detection — if the user is asking about a lot, single-item
+    # comparisons are misleading. We still run the rest of the analysis but
+    # prefix the verdict with a warning and cap the verdict score.
+    bundle = await detect_bundle(query)
 
     # 1. Market price from PriceCharting — get multiple results and pick best match
-    results = await pc.search(query, max_results=10)
+    results = await pc.search(pc_query, max_results=10)
+    if not results and pc_query != query:
+        # Refined query failed — retry with the raw user input.
+        results = await pc.search(query, max_results=10)
     if not results:
         await msg.edit_text(f"Prodotto '{query}' non trovato su PriceCharting.")
         return
 
-    best_idx = best_match(query, results)
+    # Use the refined query for best-match — it discriminates set variants better.
+    best_idx, match_confidence = best_match_with_confidence(pc_query, results)
+
+    # If the match is genuinely ambiguous (low confidence + multiple candidates
+    # that look similar), let the user pick which product to evaluate rather
+    # than silently guessing. Threshold aligned with the 🟡-or-worse emoji
+    # band — any non-🟢 match prompts the picker.
+    if match_confidence < 0.6 and len(results) >= 2:
+        await _show_picker_keyboard(
+            msg, context, results[:5], best_idx,
+            offered_eur=offered_eur,
+            forced_card_cond=forced_card_cond,
+            forced_condition=forced_condition,
+            query=query,
+            pc_query=pc_query,
+            bundle=bundle,
+        )
+        return
+
+    await _finish_evaluate(
+        msg, context, results, best_idx, match_confidence,
+        offered_eur=offered_eur,
+        forced_card_cond=forced_card_cond,
+        forced_condition=forced_condition,
+        query=query,
+        bundle=bundle,
+    )
+
+
+async def _finish_evaluate(
+    msg, context, results, best_idx, match_confidence,
+    *, offered_eur, forced_card_cond, forced_condition, query, bundle,
+):
+    """Continue /evaluate with a chosen product. Reused by both the auto-pick
+    path (high-confidence best_match) and the user-pick callback."""
+    rates = await get_exchange_rates()
     product_result = results[best_idx]
+
+    # Determine the card-vs-game flavour now that we have the product back.
+    is_card = product_result.category in (
+        ProductCategory.POKEMON, ProductCategory.MAGIC, ProductCategory.YUGIOH,
+    )
+
+    # If the product is a card and no card condition was forced, fall back to
+    # the user's saved default (default_card_condition in /settings), then to
+    # raw NM if no user context is available.
+    card_cond: CardCondition | None = None
+    if is_card:
+        if forced_card_cond is not None:
+            card_cond = forced_card_cond
+        else:
+            user = context.user_data.get("user") if context.user_data else None
+            default_grade = get_preference(user, "default_card_condition") if user else "NM"
+            card_cond = CardCondition(raw_grade=default_grade)
+        detected_condition = card_condition_to_pc_bucket(card_cond)
+    else:
+        detected_condition = forced_condition or "Ungraded"
 
     # Get prices by condition
     conditions = await pc.get_all_conditions(product_result.external_id)
-    detected_condition = forced_condition or "Ungraded"  # Default to loose
     if conditions:
         market_usd, condition_used = get_condition_price(conditions, detected_condition)
     else:
@@ -140,9 +283,11 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     vinted_min = min(vinted_prices) if vinted_prices else None
     vinted_avg = sum(vinted_prices[:10]) / min(10, len(vinted_prices)) if vinted_prices else None
 
-    # 5. Hype check
+    # 5. Hype check — raw rule-based score then LLM sentiment enrichment.
     hype_posts = await search_hype(query)
-    hype_score, hype_desc = calculate_hype_score(hype_posts)
+    hype_raw, hype_raw_desc = calculate_hype_score(hype_posts)
+    hype = await enrich_hype_with_sentiment(hype_posts, hype_raw, hype_raw_desc)
+    hype_score = hype.score
 
     # --- BUILD VERDICT ---
     score = 0  # -100 (pessimo affare) to +100 (affare incredibile)
@@ -211,7 +356,7 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             reasons.append(f"🟡 Trend previsto: laterale ({change_90d:+.1f}% a 90gg)")
 
-    # Hype
+    # Hype (sentiment-adjusted via LLM when enough posts are available)
     if hype_score >= 50:
         score += 10
         reasons.append(f"🔥 Hype alto ({hype_score}/100) — domanda forte")
@@ -220,6 +365,15 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         score -= 5
         reasons.append(f"😴 Nessun hype ({hype_score}/100) — potrebbe essere difficile rivendere")
+    if hype.has_sentiment:
+        # Show sentiment as a separate line so the user knows volume vs vibe.
+        if hype.sentiment >= 0.3:
+            arrow = "📈"
+        elif hype.sentiment <= -0.3:
+            arrow = "📉"
+        else:
+            arrow = "➡️"
+        reasons.append(f"  {arrow} _Sentiment: {hype.summary}_")
 
     # Resale margins
     resale_info = _calculate_resale(offered_eur, market_eur, vinted_avg)
@@ -227,9 +381,19 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reasons.append(resale_info)
 
     # --- FINAL VERDICT ---
+    # Bundle/lot caveat: single-item comparisons (PriceCharting, Vinted avg,
+    # technical signals) all break for lots. Cap the verdict and prepend a
+    # warning so the user doesn't trust an over-confident BUY/SELL.
+    if bundle.is_bundle:
+        score = max(-15, min(15, score))
+        reasons.insert(0, f"📦 _Lotto/bundle rilevato: {bundle.display_summary or bundle.notes or ''}_")
+        reasons.insert(1, "⚠ Le metriche per-pezzo non sono affidabili sui lotti — usa come ordine di grandezza.")
+
     score = max(-100, min(100, score))
 
-    if score >= 40:
+    if bundle.is_bundle:
+        verdict = "📦 *LOTTO/BUNDLE* — valutazione indicativa, non singolo pezzo"
+    elif score >= 40:
         verdict = "🟢🟢 *AFFARE!* Compralo subito!"
     elif score >= 20:
         verdict = "🟢 *BUON ACQUISTO* — prezzo giusto, buone prospettive"
@@ -241,11 +405,21 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         verdict = "🔴 *NON CONVIENE* — prezzo troppo alto o momento sbagliato"
 
     # --- FORMAT OUTPUT ---
-    cond_emoji = CONDITION_EMOJI.get(condition_used, "")
+    if card_cond is not None:
+        cond_emoji = card_condition_emoji(card_cond)
+        cond_display = card_cond.display
+    else:
+        cond_emoji = CONDITION_EMOJI.get(condition_used, "")
+        cond_display = condition_used
+    match_em = confidence_emoji(match_confidence)
+    match_line = f"{match_em} Match: *{product.name}* _(confidence {match_confidence:.0%})_"
+    if match_confidence < 0.35:
+        match_line += "\n⚠ _Match incerto — manda più dettagli (set, numero, lingua)._"
     lines = [
-        f"💰 *VALUTAZIONE: {product.name}*",
+        f"💰 *VALUTAZIONE*",
+        match_line,
         f"🏷 Prezzo offerto: *€{offered_eur:.2f}*",
-        f"{cond_emoji} Condizione: *{condition_used}*\n",
+        f"{cond_emoji} Condizione: *{cond_display}*\n",
         f"{verdict}",
         f"📊 Score: *{score:+d}/100*\n",
         "━━━━━━━━━━━━━━━━",
@@ -258,11 +432,17 @@ async def evaluate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Reference prices by condition
     lines.append("\n*Prezzi mercato per condizione:*")
     if conditions:
+        # Show Box Only / Manual Only only when relevant (selected, or no
+        # other condition matched) — they clutter the output otherwise.
+        niche = {"Box Only", "Manual Only"}
         for cond_name, cond_prices in conditions.items():
-            if cond_prices and cond_name not in ("Box Only", "Manual Only"):
-                p_eur = usd_to_eur(cond_prices[-1].price, rates)
-                marker = " ← *confronto*" if cond_name == condition_used else ""
-                lines.append(f"  {cond_name}: €{p_eur:.2f}{marker}")
+            if not cond_prices:
+                continue
+            if cond_name in niche and cond_name != condition_used:
+                continue
+            p_eur = usd_to_eur(cond_prices[-1].price, rates)
+            marker = " ← *confronto*" if cond_name == condition_used else ""
+            lines.append(f"  {cond_name}: €{p_eur:.2f}{marker}")
     if vinted_min:
         lines.append(f"  👗 Vinted minimo: €{vinted_min:.2f}")
     if vinted_avg:
@@ -301,3 +481,127 @@ def _calculate_resale(buy_eur: float, market_eur: float, vinted_avg: float | Non
     if lines:
         return "Margini rivendita stimati:\n    " + "\n    ".join(lines)
     return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Top-N picker.
+#
+# When best_match isn't confident, we'd rather ask than guess. We stash the
+# in-progress evaluate state in `context.user_data` keyed by a short random
+# token, and show an inline keyboard with the top candidates. The callback
+# re-enters `_finish_evaluate` with the user's choice.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_PICKER_TTL_SECONDS = 5 * 60       # state expires after 5 minutes
+_PICKER_MAX_CANDIDATES = 5
+
+
+def _stash_picker_state(context: ContextTypes.DEFAULT_TYPE, state: dict) -> str:
+    """Save the picker state and return the short token used in callback_data."""
+    bucket = context.user_data.setdefault("evaluate_picker", {})
+    # Evict expired entries first — `user_data` is per-user, so this stays small.
+    now = time.time()
+    for k in list(bucket):
+        if bucket[k].get("expires_at", 0) < now:
+            del bucket[k]
+    token = secrets.token_urlsafe(6)
+    state["expires_at"] = now + _PICKER_TTL_SECONDS
+    bucket[token] = state
+    return token
+
+
+def _retrieve_picker_state(context: ContextTypes.DEFAULT_TYPE, token: str) -> dict | None:
+    bucket = (context.user_data or {}).get("evaluate_picker") or {}
+    state = bucket.get(token)
+    if not state:
+        return None
+    if state.get("expires_at", 0) < time.time():
+        del bucket[token]
+        return None
+    # One-shot: remove after retrieval so re-clicking the same button doesn't
+    # double-run the evaluation.
+    del bucket[token]
+    return state
+
+
+async def _show_picker_keyboard(
+    msg, context, candidates, suggested_idx,
+    *, offered_eur, forced_card_cond, forced_condition, query, pc_query, bundle,
+):
+    """Render the inline keyboard for the top candidates and stash the state."""
+    token = _stash_picker_state(context, {
+        "results": candidates,
+        "offered_eur": offered_eur,
+        "forced_card_cond": forced_card_cond,
+        "forced_condition": forced_condition,
+        "query": query,
+        "pc_query": pc_query,
+        "bundle": bundle,
+    })
+
+    rows = []
+    for i, r in enumerate(candidates):
+        marker = "💡 " if i == suggested_idx else ""
+        # Telegram caps button labels at ~64 chars — name is usually short
+        # enough but truncate just in case.
+        label = f"{marker}{r.name}"[:60]
+        rows.append([InlineKeyboardButton(label, callback_data=f"eval_pick:{token}:{i}")])
+    rows.append([InlineKeyboardButton("❌ Annulla", callback_data=f"eval_pick:{token}:cancel")])
+
+    await msg.edit_text(
+        f"❓ *Match incerto per '{query}'*\n\n"
+        f"Trovati più candidati — scegli quello giusto:",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(rows),
+    )
+
+
+async def evaluate_pick_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """CallbackQueryHandler entry-point for `eval_pick:<token>:<idx|cancel>`."""
+    q = update.callback_query
+    await q.answer()
+    try:
+        _, token, idx_str = q.data.split(":", 2)
+    except ValueError:
+        await q.edit_message_text("⚠ Callback malformato.")
+        return
+
+    if idx_str == "cancel":
+        await q.edit_message_text("❌ Valutazione annullata.")
+        # Free the state without running the evaluation.
+        _retrieve_picker_state(context, token)
+        return
+
+    state = _retrieve_picker_state(context, token)
+    if state is None:
+        await q.edit_message_text(
+            "⏱ Sessione picker scaduta — rilancia /evaluate."
+        )
+        return
+
+    try:
+        chosen_idx = int(idx_str)
+    except ValueError:
+        await q.edit_message_text("⚠ Indice non valido.")
+        return
+
+    results = state["results"]
+    if not (0 <= chosen_idx < len(results)):
+        await q.edit_message_text("⚠ Indice fuori range.")
+        return
+
+    # Show a quick "computing" message to mirror the original UX, then continue.
+    await q.edit_message_text(
+        f"🔍 Valuto *{results[chosen_idx].name}*...",
+        parse_mode="Markdown",
+    )
+
+    # User-confirmed pick → confidence is effectively 1.0 from here on.
+    await _finish_evaluate(
+        q.message, context, results, chosen_idx, 1.0,
+        offered_eur=state["offered_eur"],
+        forced_card_cond=state["forced_card_cond"],
+        forced_condition=state["forced_condition"],
+        query=state["query"],
+        bundle=state["bundle"],
+    )

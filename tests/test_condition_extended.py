@@ -47,8 +47,49 @@ class TestGetConditionPrice:
 
 class TestConditionEmoji:
     def test_all_conditions_have_emoji(self):
-        for condition in ["Ungraded", "Complete in Box", "New/Sealed", "Graded (PSA)", "Unknown"]:
+        # Includes the new buckets so the bot UI never falls back to ""
+        for condition in [
+            "Ungraded", "Complete in Box", "Missing Manual", "New/Sealed",
+            "Graded (PSA)", "Box Only", "Manual Only", "Unknown",
+        ]:
             assert condition in CONDITION_EMOJI
+
+
+class TestFallbackForNewBuckets:
+    """Missing Manual / Box Only / Manual Only should degrade sensibly when
+    PriceCharting doesn't have data for that exact bucket."""
+
+    def _conditions_minimal(self):
+        from datetime import datetime
+        return {
+            "Ungraded": [PricePoint(date=datetime.now(), price=20.0)],
+            "Complete in Box": [PricePoint(date=datetime.now(), price=60.0)],
+        }
+
+    def test_missing_manual_falls_back_to_cib(self):
+        price, used = get_condition_price(self._conditions_minimal(), "Missing Manual")
+        assert price == 60.0
+        assert used == "Complete in Box"
+
+    def test_box_only_falls_back_to_ungraded(self):
+        price, used = get_condition_price(self._conditions_minimal(), "Box Only")
+        assert price == 20.0
+        assert used == "Ungraded"
+
+    def test_manual_only_falls_back_to_ungraded(self):
+        price, used = get_condition_price(self._conditions_minimal(), "Manual Only")
+        assert price == 20.0
+        assert used == "Ungraded"
+
+    def test_box_only_direct_match_when_present(self):
+        from datetime import datetime
+        conds = {
+            "Ungraded": [PricePoint(date=datetime.now(), price=20.0)],
+            "Box Only": [PricePoint(date=datetime.now(), price=8.0)],
+        }
+        price, used = get_condition_price(conds, "Box Only")
+        assert price == 8.0
+        assert used == "Box Only"
 
 
 class TestEdgeCases:

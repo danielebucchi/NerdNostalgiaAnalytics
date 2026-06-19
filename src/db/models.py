@@ -3,7 +3,7 @@ from enum import Enum as PyEnum
 
 from sqlalchemy import (
     Column, Integer, String, Float, DateTime, ForeignKey, Enum, BigInteger,
-    UniqueConstraint, Index, Boolean, Text,
+    UniqueConstraint, Index, Boolean, Text, JSON,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -26,6 +26,33 @@ class SignalType(str, PyEnum):
     HOLD = "HOLD"
     SELL = "SELL"
     STRONG_SELL = "STRONG SELL"
+
+
+class User(Base):
+    """Telegram user profile + per-user preferences. Auto-registered on first
+    interaction by the middleware in src/bot/middleware/user_context.py."""
+    __tablename__ = "users"
+
+    # Telegram user IDs are 64-bit ints; using BigInteger keeps room for future
+    # growth even though the current range fits in 32 bits.
+    telegram_user_id = Column(BigInteger, primary_key=True, autoincrement=False)
+    first_name = Column(String(64), nullable=True)
+    last_name = Column(String(64), nullable=True)
+    username = Column(String(32), nullable=True)
+    language_code = Column(String(8), nullable=True)  # "it", "en", ...
+    is_admin = Column(Boolean, default=False, nullable=False)
+    is_blocked = Column(Boolean, default=False, nullable=False)
+    # JSON blob keeps the schema small and future-proof. Default sub-keys are
+    # populated lazily by the prefs helpers in src/services/users.py.
+    # Stored keys: currency ("EUR"|"USD"), default_margin_pct (int 1-90),
+    # default_card_condition (str), notifications (bool), display_language
+    # ("it"|"en", overrides language_code for output).
+    preferences = Column(JSON, default=dict, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_seen = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<User(id={self.telegram_user_id}, username={self.username!r})>"
 
 
 class Product(Base):

@@ -1,0 +1,62 @@
+# Anything not in COPY directives below the deps install gets ignored, but a
+# slim build context still speeds up `docker build` and reduces accidental
+# leakage of secrets/state into images.
+
+# Source control + history
+.git/
+.gitignore
+
+# Local virtualenvs
+.venv/
+venv/
+env/
+
+# Caches
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# IDE/editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+
+# Runtime artefacts that must NOT be baked into the image
+*.db
+*.sqlite3
+*.sqlite
+data/
+lite-data/
+charts_cache/
+*.log
+nerd_nostalgia.db*
+
+# Secrets — only the example may go in
+.env
+*.env
+
+# Test outputs / artifacts
+tests/__pycache__/
+tests/.cache/
+
+# Notes & user data that we don't ship
+notes/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Docker stuff itself (no need to copy these into the build context)
+Dockerfile
+Dockerfile.lite
+docker-compose.yml
+.dockerignore
+Makefile

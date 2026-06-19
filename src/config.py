@@ -13,6 +13,21 @@ class Settings(BaseSettings):
     # CardTrader API (seller JWT token)
     cardtrader_token: str = ""
 
+    # Groq API key — optional; enables the LLM fallback parser for noisy queries.
+    # Genuine free tier (no billing needed, EEA-friendly): 30 RPM / 6000 RPD on
+    # llama-3.3-70b-versatile. Get one at https://console.groq.com/keys
+    groq_api_key: str = ""
+
+    # Comma-separated Telegram user IDs allowed to interact with the bot. Empty
+    # means "open to anyone who messages me". Use this when you want to restrict
+    # to friends or yourself.
+    whitelist_telegram_ids: str = ""
+
+    # Comma-separated Telegram user IDs with admin privileges (e.g. /backup,
+    # broadcast, user management). Always implicitly includes the first user
+    # who ever registered when this list is empty (bootstrap-the-owner pattern).
+    admin_telegram_ids: str = ""
+
     # Scraping settings
     scrape_delay_seconds: float = 2.0
     max_concurrent_requests: int = 3

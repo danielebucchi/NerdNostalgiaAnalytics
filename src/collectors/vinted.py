@@ -57,6 +57,13 @@ class VintedListing:
     size: str | None
     country: str = "it"
 
+    @property
+    def card_condition(self):
+        """Condition parsed from the title (or `CardCondition()` if no signal).
+        Used to badge card listings on TCG-flavoured searches."""
+        from src.utils.condition import detect_card_condition
+        return detect_card_condition(self.title)
+
 
 class VintedCollector(BaseCollector):
     source_name = "vinted"
